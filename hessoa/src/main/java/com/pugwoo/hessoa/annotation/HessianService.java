@@ -7,14 +7,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 2015年1月6日 15:46:44
+ * 2015年1月6日 15:46:44 实现等同于xml配置hessian服务的注解。
  * @author pugwoo
- * 该注解用于替代掉类似配置文件:
- * 	<bean name="/userService"
-		class="org.springframework.remoting.caucho.HessianServiceExporter">
-		<property name="service" ref="userService" />
-		<property name="serviceInterface" value="spring_remote.api.service.IUserService" />
-	</bean>
  */
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
