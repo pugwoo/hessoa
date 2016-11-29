@@ -11,7 +11,7 @@ public class TestClient {
 			// 手工获得服务的引用
 			long start = System.currentTimeMillis();
 			IUserService userService = SOAClient.getService(IUserService.class,
-					"http://192.168.1.102:8080/hessoa-demo/_remote/userService");
+					"http://127.0.0.1:8080/hessoa-demo/_remote/userService");
 			long end = System.currentTimeMillis();
 			System.out.println("获取服务耗时:" + (end - start) + "ms");
 			
