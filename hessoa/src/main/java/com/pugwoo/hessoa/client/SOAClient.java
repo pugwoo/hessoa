@@ -17,13 +17,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.caucho.hessian.client.HessianProxyFactory;
+import com.pugwoo.hessoa.utils.Constants;
 
 /**
  * 拿到soa的具体url，这是一种手工的方式。
  * 
  * class到ip:port的映射关系，写在机器的文件上，格式为：
- * com.trueme.xxx  127.0.0.1:8080/order/_remote
- * com.trueme.xxx  127.1.2.3:8081/order/_remote
+ * com.abc.xxx  127.0.0.1:8080/order/
+ * com.abc.xxx  127.1.2.3:8081/order/
  * 
  * 配置文件每1秒读取更新一次。
  * 
@@ -258,7 +259,7 @@ public class SOAClient {
 			
 			// 负载均衡和hosts自动摘除已经实现
 			int index = new Random().nextInt(hostList.size());
-			url = "http://" + hostList.get(index) + "/" + url;
+			url = "http://" + hostList.get(index) + "/" + Constants.HESSOA_URL_PREFIX + "/"+ url;
 		}
 		
 		HessianProxyFactory factory = new HessianProxyFactory();

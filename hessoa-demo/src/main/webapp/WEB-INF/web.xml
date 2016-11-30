@@ -5,24 +5,7 @@
 	http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
 
     <!-- 【重要!】 为了让SOAHessianServiceExporter可以正确拿到url，hessianServer约定放在最前面 -->
-    <!-- 后续或许可能通过hessoa-conf.xml的标记来拿，更准确 -->
-	<servlet>
-		<servlet-name>hessianServer</servlet-name>
-		<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
-		<init-param>
-			<param-name>contextConfigLocation</param-name>
-			<param-value>classpath:hessoa-conf.xml,classpath:applicationContext-*.xml</param-value>
-		</init-param>
-		<load-on-startup>1</load-on-startup>
-	</servlet>
 
-	<servlet-mapping>
-		<servlet-name>hessianServer</servlet-name>
-		<url-pattern>/_remote/*</url-pattern> <!-- 以_remote开头的是soa链接，可以做内外网安全控制 -->
-	</servlet-mapping>
-	
-	<!-- 其它请求走正常spring mvc -->
-	
 	<!-- 除此配置之外，tomcat的<Connector>标签中要加上 useBodyEncodingForURI="true"-->
 	<filter>
 		<filter-name>characterEncodingFilter</filter-name>
@@ -47,7 +30,7 @@
 		<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
 		<init-param>
 			<param-name>contextConfigLocation</param-name>
-			<param-value>classpath:applicationContext-*.xml</param-value>
+			<param-value>classpath:hessoa-conf.xml,classpath:applicationContext-*.xml</param-value>
 		</init-param>
 		<load-on-startup>1</load-on-startup>
 	</servlet>

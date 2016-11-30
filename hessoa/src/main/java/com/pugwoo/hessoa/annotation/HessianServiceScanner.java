@@ -24,6 +24,7 @@ import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.util.StringUtils;
 
 import com.pugwoo.hessoa.register.SOAHessianServiceExporter;
+import com.pugwoo.hessoa.utils.Constants;
 
 /**
  * 2015年1月6日 14:54:54
@@ -107,6 +108,8 @@ public class HessianServiceScanner implements BeanFactoryPostProcessor,
 					if(!beanName.startsWith("/")) {
 						beanName = "/" + beanName;
 					}
+					
+					beanName = "/" + Constants.HESSOA_URL_PREFIX + beanName;
 		
 					/**
 					 * 下面这一段，实际上等价于xml配置
