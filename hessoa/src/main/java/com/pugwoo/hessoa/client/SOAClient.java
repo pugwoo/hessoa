@@ -61,9 +61,11 @@ public class SOAClient {
 	
 	// redis上存放的从接口到url的映射,当本地拿过一次之后，服务就会自动来更新这个列表并检查服务是否存活
 	private static Map<String, List<String>> redisInterfToUrls = new ConcurrentHashMap<String, List<String>>();
+	// redis存放的从接口到url的映射，取一个作为模版
+	private static Map<String, String> redisInterfTemplate = new HashMap<>();
 	
 	// 本机的ipv4 ip
-	private static List<String> thisMathineIps = new ArrayList<>();
+	private static List<String> thisMathineIps = NetUtils.getIpv4IPs();
 	
 	/**处理本地文件*/
 	private static synchronized void updatePkgToHosts() {
@@ -114,7 +116,6 @@ public class SOAClient {
 	static {
 		updatePkgToHosts();
 		livePkgToHosts = pkgToHosts;
-		thisMathineIps = NetUtils.getIpv4IPs();
 		
 		// 更新本地配置文件
 		Thread thread = new Thread(new Runnable() {
@@ -173,7 +174,7 @@ public class SOAClient {
 	
 	private static void updateRedisUrl() {
 		for(Entry<String, List<String>> entry : redisInterfToUrls.entrySet()) {
-			List<String> urls = RedisUtils.getURLs(entry.getKey());
+			List<String> urls = getRedisUrlAndFilterIp(entry.getKey());
 			// 只有当urls不为空，才会更新，避免redis挂掉的情况。因为urls宜多不宜少
 			entry.setValue(urls);
 		}
@@ -301,7 +302,7 @@ public class SOAClient {
 	private static List<String> getUrlByClass(Class<?> clazz) {
 		List<String> urls = redisInterfToUrls.get(clazz.getName());
 		if(urls == null) { // 第一次拿
-			urls = RedisUtils.getURLs(clazz.getName());
+			urls = getRedisUrlAndFilterIp(clazz.getName());
 			redisInterfToUrls.put(clazz.getName(), urls);
 		}
 		if(urls == null || urls.isEmpty()) {
@@ -323,7 +324,7 @@ public class SOAClient {
 				int index = new Random().nextInt(hosts.size());
 				String host = hosts.get(index);
 				// 拿redis的接口来做替换
-				String url = urls.get(0);
+				String url = redisInterfTemplate.get(clazz.getName());
 				List<String> result = new ArrayList<>();
 				result.add(replaceUrl(url, host));
 				return result;
@@ -342,8 +343,6 @@ public class SOAClient {
 				// ignore
 			}
 		}
-		
-		// TODO 需要移除局域网但不在同一个网段的ip
 		
 		return preferUrls.isEmpty() ? urls : preferUrls;
 	}
@@ -425,6 +424,52 @@ public class SOAClient {
 		} catch (MalformedURLException e) {
 			return null;
 		}
+	}
+	
+	// 从redis那链接并过滤非本局域网的
+	private static List<String> getRedisUrlAndFilterIp(String key) {
+		List<String> urls = RedisUtils.getURLs(key);
+		if(urls != null && !urls.isEmpty()) {
+			redisInterfTemplate.put(key, urls.get(0));
+		}
+		
+		// XXX 目前按最简单的方式判断局域网,后续再优化.
+		// TODO 优先使用外网，除非是本机ip
+		// 一般云服务是10.或172.的局域网，本地是192.168.的ip
+		List<String> newUrls = new ArrayList<>();
+		for(String url : urls) {
+			try {
+				URL _url = new URL(url);
+				String host = _url.getHost();
+				if(host.startsWith("10.")) {
+					for(String localIp : thisMathineIps) {
+						if(localIp.startsWith("10.")) {
+							newUrls.add(url);
+							break;
+						}
+					}
+				} else if (host.startsWith("172.")) {
+					for(String localIp : thisMathineIps) {
+						if(localIp.startsWith("172.")) {
+							newUrls.add(url);
+							break;
+						}
+					}
+				} else if (host.startsWith("192.168.")) {
+					for(String localIp : thisMathineIps) {
+						if(localIp.startsWith("192.168.")) {
+							newUrls.add(url);
+							break;
+						}
+					}
+				} else {
+					newUrls.add(url);
+				}
+			} catch (MalformedURLException e) {
+			}
+		}
+		
+		return newUrls;
 	}
 	
 }
