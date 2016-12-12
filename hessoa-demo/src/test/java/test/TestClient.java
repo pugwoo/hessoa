@@ -8,12 +8,13 @@ public class TestClient {
 
 	public static void main(String[] args) throws Exception {
 		for(int i = 0; i < 10; i++) {
-			// 手工获得服务的引用
+			// 自动获得服务的引用
 			long start = System.currentTimeMillis();
 			IUserService userService = SOAClient.getService(IUserService.class);
 			
+			// 指定绝对地址的方式，用于调试
 //			IUserService userService = SOAClient.getService(IUserService.class,
-//					"userService"); // 这种方式需要往D:/soa_host.txt或/etc/soa_host文件中写入：127.0.0.1:8080/hessoa-demo
+//					"http://127.0.0.1:8080/hessoa-demo/_hessoa/userServiceImpl"); 
 			long end = System.currentTimeMillis();
 			System.out.println("获取服务耗时:" + (end - start) + "ms");
 			

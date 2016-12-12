@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.caucho.hessian.client.HessianProxyFactory;
+import com.pugwoo.hessoa.utils.NetUtils;
 import com.pugwoo.hessoa.utils.RedisUtils;
 
 /**
@@ -60,6 +61,9 @@ public class SOAClient {
 	
 	// redis上存放的从接口到url的映射,当本地拿过一次之后，服务就会自动来更新这个列表并检查服务是否存活
 	private static Map<String, List<String>> redisInterfToUrls = new ConcurrentHashMap<String, List<String>>();
+	
+	// 本机的ipv4 ip
+	private static List<String> thisMathineIps = new ArrayList<>();
 	
 	/**处理本地文件*/
 	private static synchronized void updatePkgToHosts() {
@@ -110,14 +114,16 @@ public class SOAClient {
 	static {
 		updatePkgToHosts();
 		livePkgToHosts = pkgToHosts;
+		thisMathineIps = NetUtils.getThisMathineIps();
 		
+		// 更新本地配置文件
 		Thread thread = new Thread(new Runnable() {
 			@Override
 			public void run() {
 				while (true) {
 					try {
 						updatePkgToHosts();
-						Thread.sleep(1000);
+						Thread.sleep(3000);
 					} catch (Exception e) {
 						LOGGER.error("updatePkgToHosts fail", e);
 					}				
@@ -128,6 +134,7 @@ public class SOAClient {
 		thread.setDaemon(true);
 		thread.start();
 		
+		// 检查服务器存活情况
 		Thread thread2 = new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -144,42 +151,49 @@ public class SOAClient {
 		thread2.setName("SOA-checkHostsLive-thread");
 		thread2.setDaemon(true);
 		thread2.start();
+		
+		// 更新redis的urls，10秒更新一次，更新不到不清空
+		Thread thread3 = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				while (true) {
+					try {
+						updateRedisUrl();
+						Thread.sleep(10000);
+					} catch (Exception e) {
+						LOGGER.error("updateRedisUrl fail", e);
+					}				
+				}
+			}
+		});
+		thread3.setName("SOA-sync-Redis-urls");
+		thread3.setDaemon(true);
+		thread3.start();
+	}
+	
+	private static void updateRedisUrl() {
+		for(Entry<String, List<String>> entry : redisInterfToUrls.entrySet()) {
+			List<String> urls = RedisUtils.getURLs(entry.getKey());
+			// 只有当urls不为空，才会更新，避免redis挂掉的情况。因为urls宜多不宜少
+			entry.setValue(urls);
+		}
 	}
 	
 	/**
 	 * 检查服务器是否存活
 	 */
 	private static synchronized void checkHostsLive() {
+		// 检查本地的，因为livePkgToHosts可能删除key，所以使用全量替换
 		Map<String, List<String>> _livePkgToHosts = new HashMap<String, List<String>>();
 		
 		for(Entry<String, List<String>> entry : pkgToHosts.entrySet()) {
 			List<String> lives = new ArrayList<String>();
 			for(String str : entry.getValue()) {
-				String current = str;
-				if(str.startsWith("http://")) {
-					str = str.substring("http://".length());
-				} else if (str.startsWith("https://")) {
-					str = str.substring("https://".length());
-				}
-				int index = str.indexOf("/");
-				if(index >= 0) {
-					str = str.substring(0, index);
-				}
-				index = str.indexOf(":");
-				String ip = null, port = null;
-				if(index > 0) {
-					ip = str.substring(0, index);
-					port = str.substring(index + 1);
-				} else {
-					ip = str;
-					port = "80";
-				}
-				boolean isLive = checkPort(ip, port);
-				
+				boolean isLive = isUrlHostAlive(str);
 				if(isLive) {
-					lives.add(current);
+					lives.add(str);
 				} else {
-					LOGGER.warn("host {} is inavaliable", current);
+					LOGGER.warn("host {} is inavaliable", str);
 				}
 			}
 			
@@ -188,8 +202,58 @@ public class SOAClient {
 			}
 			_livePkgToHosts.put(entry.getKey(), lives);
 		}
-		
 		livePkgToHosts = _livePkgToHosts;
+		
+		// 检查redis的，局部替换即可,不会减少key
+		for(Entry<String, List<String>> entry : redisInterfToUrls.entrySet()) {
+			List<String> lives = new ArrayList<String>();
+			for(String str : entry.getValue()) {
+				boolean isLive = isUrlHostAlive(str);
+				if(isLive) {
+					lives.add(str);
+				} else {
+					LOGGER.warn("host {} is inavaliable", str);
+				}
+			}
+			if(lives.isEmpty()) {
+				LOGGER.error("class {} has no avaliable hosts in redis", entry.getKey());
+			}
+			entry.setValue(lives);
+		}
+	}
+	
+	/**
+	 * 检查url对应的ip 端口是否可用
+	 * @param url
+	 * @return
+	 */
+	private static boolean isUrlHostAlive(String url) {
+		if(url == null) {
+			return false;
+		}
+		
+		if(url.startsWith("http://")) {
+			url = url.substring("http://".length());
+		} else if (url.startsWith("https://")) {
+			url = url.substring("https://".length());
+		}
+		int index = url.indexOf("/");
+		if(index >= 0) {
+			url = url.substring(0, index);
+		}
+		
+		index = url.indexOf(":");
+		String ip = null, port = null;
+		if(index > 0) {
+			ip = url.substring(0, index);
+			port = url.substring(index + 1);
+		} else {
+			ip = url;
+			port = "80"; // 内网不考虑https
+		}
+		
+		boolean isLive = checkPort(ip, port);
+		return isLive;
 	}
 	
 	/**
@@ -265,7 +329,21 @@ public class SOAClient {
 				return result;
 			}
 		}
-		return urls;
+		
+		// 如果不是本地指定，那么采用就近原则，优先取本机的
+		List<String> preferUrls = new ArrayList<>();
+		for(String url : urls) {
+			try {
+				URL _url = new URL(url);
+				if(thisMathineIps.contains(_url.getHost())) {
+					preferUrls.add(url);
+				}
+			} catch (MalformedURLException e) {
+				// ignore
+			}
+		}
+		
+		return preferUrls.isEmpty() ? urls : preferUrls;
 	}
 	
 	/**
