@@ -114,7 +114,7 @@ public class SOAClient {
 	static {
 		updatePkgToHosts();
 		livePkgToHosts = pkgToHosts;
-		thisMathineIps = NetUtils.getThisMathineIps();
+		thisMathineIps = NetUtils.getIpv4IPs();
 		
 		// 更新本地配置文件
 		Thread thread = new Thread(new Runnable() {
@@ -342,6 +342,8 @@ public class SOAClient {
 				// ignore
 			}
 		}
+		
+		// TODO 需要移除局域网但不在同一个网段的ip
 		
 		return preferUrls.isEmpty() ? urls : preferUrls;
 	}

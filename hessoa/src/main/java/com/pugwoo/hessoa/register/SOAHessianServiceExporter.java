@@ -6,7 +6,6 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -25,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.remoting.caucho.HessianServiceExporter;
 import org.springframework.web.context.ServletConfigAware;
 
+import com.pugwoo.hessoa.utils.NetUtils;
 import com.pugwoo.hessoa.utils.RedisUtils;
 
 /**
@@ -49,23 +49,19 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 	 */
 	private List<String> getEndPoints() throws Exception {
 		List<String> endPoints = new ArrayList<String>();
-		Pattern ipv4Pattern = Pattern.compile("^((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$");
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 		Set<ObjectName> objs = mbs.queryNames(new ObjectName(
 				"*:type=Connector,*"), Query.match(Query.attr("protocol"),
 				Query.value("HTTP/1.1")));
-		String hostname = InetAddress.getLocalHost().getHostName();
-		InetAddress[] addresses = InetAddress.getAllByName(hostname);
+		List<String> addresses = NetUtils.getIpv4IPs();
+		
 		for (Iterator<ObjectName> i = objs.iterator(); i.hasNext();) {
 			ObjectName obj = i.next();
 			String scheme = mbs.getAttribute(obj, "scheme").toString();
 			String port = obj.getKeyProperty("port");
-			for (InetAddress addr : addresses) {
-				String host = addr.getHostAddress();
-				if(host != null && ipv4Pattern.matcher(host).find()) {
-					String ep = scheme + "://" + host + ":" + port;
-					endPoints.add(ep);
-				}
+			for (String ip : addresses) {
+				String ep = scheme + "://" + ip + ":" + port;
+				endPoints.add(ep);
 			}
 		}
 		return endPoints;
@@ -76,7 +72,7 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 		final List<String> urls = new ArrayList<String>();
 		ServletContext servletContext = servletConfig.getServletContext();
 		try {
-			List<String> endPoints = getEndPoints();
+			List<String> endPoints = getEndPoints();			
 			String contextPath = servletContext.getContextPath();
 			String servletName = servletConfig.getServletName();
 			File webXml = new File(servletContext.getRealPath("/WEB-INF/web.xml"));
