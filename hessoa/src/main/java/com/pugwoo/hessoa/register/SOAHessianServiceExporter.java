@@ -20,8 +20,12 @@ import javax.management.Query;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.remoting.caucho.HessianServiceExporter;
 import org.springframework.web.context.ServletConfigAware;
+
+import com.pugwoo.hessoa.utils.RedisUtils;
 
 /**
  * 用于自动向配置中心注册当前提供的服务的信息，最主要的就是连接地址:
@@ -32,6 +36,8 @@ import org.springframework.web.context.ServletConfigAware;
  */
 public class SOAHessianServiceExporter extends HessianServiceExporter implements
 		 ServletConfigAware{
+	
+	private static final Logger LOGGER = LoggerFactory.getLogger(SOAHessianServiceExporter.class);
 	
 	private String beanName; // 就是url，由注解HessianServiceScanner注入
 	
@@ -67,7 +73,7 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 
 	@Override
 	public void setServletConfig(ServletConfig servletConfig) {
-		List<String> urls = new ArrayList<String>();
+		final List<String> urls = new ArrayList<String>();
 		ServletContext servletContext = servletConfig.getServletContext();
 		try {
 			List<String> endPoints = getEndPoints();
@@ -95,13 +101,28 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 			}
 			
 		} catch (Exception e) {
-			e.printStackTrace();
-			// report exception
+			LOGGER.error("scan hessoa service exporter ex", e);
 		}
 		
-		for(String url : urls) {
-			System.out.println(url); // TODO 上报到配置中心
-			// TODO 这里或可以做成一个心跳模式的上报，以免配置中心失败或抽风
+		if(!urls.isEmpty()) {
+			if(RedisUtils.isConfigRedis()) { // 起一个线程，不停向redis报告，每分钟报告一次
+				Thread thread = new Thread(new Runnable() {
+					@Override
+					public void run() {
+						while(true) {
+							try {
+								RedisUtils.addUrl(getServiceInterface().getName(), 
+										urls, 60); // 60秒数据过时
+								Thread.sleep(30 * 1000); // 30秒汇报一次
+							} catch (Throwable e) {
+								LOGGER.error("RedisUtils.addUrl ex", e);
+							}
+						}
+					}
+				}, "SOAHessianServiceExporter");
+				thread.setDaemon(true);
+				thread.start();
+			}
 		}
 	}
 	

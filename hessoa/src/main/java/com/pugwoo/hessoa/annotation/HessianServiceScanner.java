@@ -104,6 +104,10 @@ public class HessianServiceScanner implements BeanFactoryPostProcessor,
 					String originalBeanName = this.beanNameGenerator.generateBeanName(candidate, this.registry);
 					String beanName = this.exporterBeanNameGenerator.generateBeanName(candidate, this.registry);
 					
+					if(beanName == null || beanName.trim().isEmpty()) {
+						beanName = candidate.getBeanClassName(); // 确保beanName有值
+					}
+					
 					// beanName必须以/开头
 					if(!beanName.startsWith("/")) {
 						beanName = "/" + beanName;
@@ -111,14 +115,6 @@ public class HessianServiceScanner implements BeanFactoryPostProcessor,
 					
 					beanName = "/" + Constants.HESSOA_URL_PREFIX + beanName;
 		
-					/**
-					 * 下面这一段，实际上等价于xml配置
-					 */
-					BeanDefinitionBuilder hessianBeanDef = 
-							BeanDefinitionBuilder.genericBeanDefinition(SOAHessianServiceExporter.class);
-					hessianBeanDef.addPropertyReference("service", originalBeanName);
-					hessianBeanDef.addPropertyValue("beanName", beanName);
-					
 					ScannedGenericBeanDefinition bd = (ScannedGenericBeanDefinition) candidate;
 					String[] interfaces = bd.getMetadata().getInterfaceNames();
 					if (interfaces == null || interfaces.length == 0) {
@@ -141,6 +137,13 @@ public class HessianServiceScanner implements BeanFactoryPostProcessor,
 						continue;
 					}
 					
+					/**
+					 * 下面这一段，实际上等价于xml配置
+					 */
+					BeanDefinitionBuilder hessianBeanDef = 
+							BeanDefinitionBuilder.genericBeanDefinition(SOAHessianServiceExporter.class);
+					hessianBeanDef.addPropertyReference("service", originalBeanName);
+					hessianBeanDef.addPropertyValue("beanName", beanName);
 					hessianBeanDef.addPropertyValue("serviceInterface", interf.getName());
 
 					BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(

@@ -6,31 +6,38 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.Socket;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.caucho.hessian.client.HessianProxyFactory;
-import com.pugwoo.hessoa.utils.Constants;
+import com.pugwoo.hessoa.utils.RedisUtils;
 
 /**
  * 拿到soa的具体url，这是一种手工的方式。
  * 
  * class到ip:port的映射关系，写在机器的文件上，格式为：
- * com.abc.xxx  127.0.0.1:8080/order/
- * com.abc.xxx  127.1.2.3:8081/order/
+ * com.abc.xxx  127.0.0.1:8080
+ * com.abc.xxx  127.1.2.3:8081
  * 
  * 配置文件每1秒读取更新一次。
  * 
  * 匹配package如果有多个时，以最细的package更优先为原则。例如认为com.abc.order.list比com.abc.order优先级高。
  * 
- * 机器查找路径为：confPaths写定的
+ * 机器查找路径为：confPaths写定的。
+ * 
+ * ==================2016年12月12日 14:50:48 =======================
+ * 现在支持redis作为配置中心服务器，但是本地文件依然有效。而且本地文件优先生效。
+ * 
+ * 默认的，当redis拿到多个服务地址时，会优先使用本机的服务。除非本地文件特意配置。
  * 
  * @author pugwoo
  */
@@ -51,6 +58,10 @@ public class SOAClient {
 	private static long fileLastModified = 0;
 	private static File hostFile = null;
 	
+	// redis上存放的从接口到url的映射,当本地拿过一次之后，服务就会自动来更新这个列表并检查服务是否存活
+	private static Map<String, List<String>> redisInterfToUrls = new ConcurrentHashMap<String, List<String>>();
+	
+	/**处理本地文件*/
 	private static synchronized void updatePkgToHosts() {
 		if(hostFile == null) {
 			hostFile = getExistFile();
@@ -63,7 +74,6 @@ public class SOAClient {
 		if(hostFile.lastModified() == fileLastModified) {
 			return;
 		}
-		
 		try {
 			Map<String, List<String>> map = new HashMap<String, List<String>>();
 			BufferedReader br = new BufferedReader(new FileReader(hostFile));
@@ -224,7 +234,17 @@ public class SOAClient {
 	 * @param clazz
 	 * @return 查找不存在时返回null
 	 */
-	private static List<String> getHostByClass(Class<?> clazz) {
+	private static List<String> getUrlByClass(Class<?> clazz) {
+		List<String> urls = redisInterfToUrls.get(clazz.getName());
+		if(urls == null) { // 第一次拿
+			urls = RedisUtils.getURLs(clazz.getName());
+			redisInterfToUrls.put(clazz.getName(), urls);
+		}
+		if(urls == null || urls.isEmpty()) {
+			return null;
+		}
+		
+		// 本地优先
 		String matchedKey = null;
 		for(Entry<String, List<String>> entry : livePkgToHosts.entrySet()) {
 			if(clazz.getName().startsWith(entry.getKey())) {
@@ -233,33 +253,46 @@ public class SOAClient {
 				}
 			}
 		}
-		return matchedKey == null ? null : livePkgToHosts.get(matchedKey);
+		if(matchedKey != null) {
+			List<String> hosts = livePkgToHosts.get(matchedKey);
+			if(hosts != null && !hosts.isEmpty()) {
+				int index = new Random().nextInt(hosts.size());
+				String host = hosts.get(index);
+				// 拿redis的接口来做替换
+				String url = urls.get(0);
+				List<String> result = new ArrayList<>();
+				result.add(replaceUrl(url, host));
+				return result;
+			}
+		}
+		return urls;
 	}
-
+	
 	/**
-	 * 通过手工指定url获得服务引用。url支持绝对地址或相对地址。
-	 * 相对地址会根据本机的url配置去获取。
+	 * 自动从redis中获得地址，必须依赖redis
 	 * 
-	 * @param clazz 传入接口className
-	 * @param url 传入根目录后的url地址，相对地址例如/content/helloService，
-	 *        相对地址会根据本机文件配置+url构成完成地址。绝对地址必须以http://开头
-	 * @return null 如果拿不到服务
+	 * @param clazz
+	 * @return
 	 */
-	public static <T> T getService(Class<T> clazz, String url) {
-		if(url == null) {
+	public static <T> T getService(Class<T> clazz) {
+		if(clazz == null) {
 			return null;
 		}
 		
-		if(!url.startsWith("http://")) {
-			List<String> hostList = getHostByClass(clazz);
-			if(hostList == null || hostList.isEmpty()) {
-				LOGGER.error("class {} has no soa_host configured.", clazz.getName());
-				return null;
-			}
-			
-			// 负载均衡和hosts自动摘除已经实现
-			int index = new Random().nextInt(hostList.size());
-			url = "http://" + hostList.get(index) + "/" + Constants.HESSOA_URL_PREFIX + "/"+ url;
+		List<String> urlList = getUrlByClass(clazz);
+		if(urlList == null || urlList.isEmpty()) {
+			LOGGER.error("class {} has no url configured.", clazz.getName());
+			return null;
+		}
+		
+		// 负载均衡和hosts自动摘除已经实现
+		int urlListSize = urlList.size();
+		String url = null;
+		if(urlListSize == 1) {
+			url = urlList.get(0);
+		} else {
+			int index = new Random().nextInt(urlListSize);
+			url = urlList.get(index);
 		}
 		
 		HessianProxyFactory factory = new HessianProxyFactory();
@@ -270,6 +303,46 @@ public class SOAClient {
 			return t;
 		} catch (MalformedURLException e) {
 			LOGGER.error("getService {} fail", clazz.getName(), e);
+			return null;
+		}
+	}
+
+	/**
+	 * 通过手工指定url获得服务引用。
+	 * 
+	 * @param clazz 传入接口className
+	 * @param url 必须是绝对地址，必须以http://开头
+	 * @return null 如果拿不到服务
+	 */
+	public static <T> T getService(Class<T> clazz, String url) {
+		if(url == null) {
+			return null;
+		}
+
+		HessianProxyFactory factory = new HessianProxyFactory();
+		factory.setOverloadEnabled(true); 
+		try {
+			@SuppressWarnings("unchecked")
+			T t = (T) factory.create(clazz, url);
+			return t;
+		} catch (MalformedURLException e) {
+			LOGGER.error("getService {} fail", clazz.getName(), e);
+			return null;
+		}
+	}
+	
+	/**
+	 * 替换url里面的host:port为host
+	 * @param url
+	 * @param host 必须提供
+	 * @return 替换失败返回null
+	 */
+	private static String replaceUrl(String url, String host) {
+		try {
+			URL _url = new URL(url);
+			return _url.getProtocol() + "://" + host + _url.getPath() + 
+				(_url.getQuery() == null ? "" : "?" + _url.getQuery());
+		} catch (MalformedURLException e) {
 			return null;
 		}
 	}

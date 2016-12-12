@@ -13,7 +13,7 @@ import spring_remote.dao.IUserDAO;
  * 2012年11月20日 16:59:09
  */
 @Service
-@HessianService("userService")
+@HessianService
 public class UserServiceImpl implements IUserService{
 	
 	@Autowired
