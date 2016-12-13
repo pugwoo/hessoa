@@ -1,12 +1,9 @@
 package com.pugwoo.hessoa.utils;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -33,54 +30,29 @@ public class RedisUtils {
 	private static String redisKeyPrefix = "";
 	
 	static {
-		String env = System.getProperty("env");
-		if(env == null || env.trim().isEmpty()) {
-			env = "${env}";
-		}
+		String host = Configs.getRedisHost();
+		String port = Configs.getRedisPort();
+		String passwd = Configs.getRedisPassword();
+		redisKeyPrefix = Configs.getRedisKeyPrefix();
 		
-		InputStream in = RedisUtils.class.getResourceAsStream
-				(Constants.HESSOA_REIDS_PROPERTIES_FILE.replace("${env}", env));
-		if(in != null) {
-			Properties properties = new Properties();
-			try {
-				properties.load(in);
-			} catch (IOException e) {
-				LOGGER.error("properties {} load exception", 
-						Constants.HESSOA_REIDS_PROPERTIES_FILE, e);
-			}
+		if(host != null && !host.isEmpty() && port != null && !port.isEmpty()) {
+			JedisPoolConfig poolConfig = new JedisPoolConfig();
+			poolConfig.setMaxTotal(128); // 最大连接数
+			poolConfig.setMaxIdle(64);
+			poolConfig.setMaxWaitMillis(1000L);
+			poolConfig.setTestOnBorrow(false);
+			poolConfig.setTestOnReturn(false);
 			
-			String host = properties.getProperty("redis.host");
-			String port = properties.getProperty("redis.port");
-			String passwd = properties.getProperty("redis.password");
-			
-			redisKeyPrefix = properties.getProperty("redis.key.prefix");
-			if(redisKeyPrefix == null) {
-				redisKeyPrefix = "";
-			}
-			
-			if(host != null && !host.isEmpty() && port != null && !port.isEmpty()) {
-				
-				JedisPoolConfig poolConfig = new JedisPoolConfig();
-				poolConfig.setMaxTotal(128); // 最大连接数
-				poolConfig.setMaxIdle(64);
-				poolConfig.setMaxWaitMillis(1000L);
-				poolConfig.setTestOnBorrow(false);
-				poolConfig.setTestOnReturn(false);
-				
-				if(passwd == null || passwd.trim().isEmpty()) {
-					pool = new JedisPool(poolConfig, host, Integer.valueOf(port),
-							Protocol.DEFAULT_TIMEOUT);
-				} else {
-					pool = new JedisPool(poolConfig, host, Integer.valueOf(port),
-							Protocol.DEFAULT_TIMEOUT, passwd);
-				}
+			if(passwd == null || passwd.trim().isEmpty()) {
+				pool = new JedisPool(poolConfig, host, Integer.valueOf(port),
+						Protocol.DEFAULT_TIMEOUT);
 			} else {
-				LOGGER.warn("redis properties {} must have redis.host and redis.port",
-						Constants.HESSOA_REIDS_PROPERTIES_FILE);
+				pool = new JedisPool(poolConfig, host, Integer.valueOf(port),
+						Protocol.DEFAULT_TIMEOUT, passwd);
 			}
+			LOGGER.info("hessoa redis init succ.");
 		} else {
-			LOGGER.info("redis conf file {} not found, ignore.", 
-					Constants.HESSOA_REIDS_PROPERTIES_FILE);;
+			LOGGER.warn("hessoa no redis is found");
 		}
 	}
 	
@@ -112,6 +84,12 @@ public class RedisUtils {
 		return pool != null;
 	}
 	
+	private static String getKeyPrefix(String interfaceName) {
+		return Constants.HESSOA_REDIS_PREFIX
+				+ (redisKeyPrefix.isEmpty() ? redisKeyPrefix : redisKeyPrefix + "-") 
+				+ interfaceName + "-";
+	}
+	
 	/**
 	 * 将url加入到redis中
 	 * @param interfaceName
@@ -127,10 +105,9 @@ public class RedisUtils {
 		for (String url : urls) {
 			try {
 				URL _url = new URL(url);
-				String key = Constants.HESSOA_REDIS_PREFIX
-						+ (redisKeyPrefix.isEmpty() ? redisKeyPrefix : redisKeyPrefix + "-") 
-						+ interfaceName + "-" + _url.getHost() + "-" 
+				String key = getKeyPrefix(interfaceName) + _url.getHost() + "-" 
 						+ (_url.getPort() > 0 ? _url.getPort() : _url.getDefaultPort());
+				
 				// 说明一下，这里之所以加上ip-port，是因为redis没有办法为子元素设置超时时间，所以就抽上来一层
 				jedis.setex(key, expireSeconds, url);
 			} catch (MalformedURLException e) {
@@ -153,9 +130,7 @@ public class RedisUtils {
 			return new ArrayList<String>();
 		}
 		
-		Set<String> keys = jedis.keys(Constants.HESSOA_REDIS_PREFIX
-				+ (redisKeyPrefix.isEmpty() ? redisKeyPrefix : redisKeyPrefix + "-") 
-				+ interfaceName + "-*");
+		Set<String> keys = jedis.keys(getKeyPrefix(interfaceName) + "*");
 		
 		List<String> urls = new ArrayList<String>();
 		for(String key : keys) {

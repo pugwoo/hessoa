@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.net.Socket;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.caucho.hessian.client.HessianProxyFactory;
+import com.pugwoo.hessoa.utils.Configs;
 import com.pugwoo.hessoa.utils.NetUtils;
 import com.pugwoo.hessoa.utils.RedisUtils;
 
@@ -67,19 +67,78 @@ public class SOAClient {
 	// 本机的ipv4 ip
 	private static List<String> thisMathineIps = NetUtils.getIpv4IPs();
 	
+	static {
+		updatePkgToHosts();
+		livePkgToHosts = pkgToHosts;
+		
+		// 更新本地配置文件
+		Thread thread = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				while (true) {
+					try {
+						updatePkgToHosts();
+						Thread.sleep(3000);
+					} catch (Exception e) {
+						LOGGER.error("updatePkgToHosts fail", e);
+					}				
+				}
+			}
+		}, "SOA-updatePkgToHosts-thread");
+		thread.setDaemon(true);
+		thread.start();
+		
+		// 更新redis的urls，10秒更新一次，更新不到不清空
+		Thread thread2 = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				while (true) {
+					try {
+						updateRedisUrl();
+						Thread.sleep(10000);
+					} catch (Exception e) {
+						LOGGER.error("updateRedisUrl fail", e);
+					}				
+				}
+			}
+		}, "SOA-sync-Redis-urls");
+		thread2.setDaemon(true);
+		thread2.start();
+		
+		// 检查服务器存活情况
+		Thread thread3 = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				while (true) {
+					try {
+						checkHostsLive();
+						Thread.sleep(1000);
+					} catch (Exception e) {
+						LOGGER.error("checkHostsLive fail", e);
+					}				
+				}
+			}
+		}, "SOA-checkHostsLive-thread");
+		thread3.setDaemon(true);
+		thread3.start();
+	}
+	
 	/**处理本地文件*/
 	private static synchronized void updatePkgToHosts() {
 		if(hostFile == null) {
 			hostFile = getExistFile();
-			if(hostFile == null) {return;}
+			if(hostFile == null) {
+				return; // ignore
+			}
 		}
-		if(!hostFile.exists()) {
+		if(!hostFile.exists()) { // 处理删除文件的情况
 			hostFile = null;
 			return;
 		}
 		if(hostFile.lastModified() == fileLastModified) {
 			return;
 		}
+		
 		try {
 			Map<String, List<String>> map = new HashMap<String, List<String>>();
 			BufferedReader br = new BufferedReader(new FileReader(hostFile));
@@ -101,6 +160,12 @@ public class SOAClient {
 					if(!map.containsKey(pkg)) {
 						map.put(pkg, new ArrayList<String>());
 					}
+					// 兼容旧版本写的 ip:port/path的格式，现在只要ip:port
+					int indexPath = host.indexOf("/");
+					if(indexPath > 0) {
+						host = host.substring(0, indexPath);
+					}
+					
 					if(!map.get(pkg).contains(host)) {
 						map.get(pkg).add(host);
 					}
@@ -110,177 +175,59 @@ public class SOAClient {
 			pkgToHosts = map;
 			fileLastModified = hostFile.lastModified();
 		} catch (IOException e) {
+			LOGGER.error("updatePkgToHosts error", e);
 		}
 	}
 	
-	static {
-		updatePkgToHosts();
-		livePkgToHosts = pkgToHosts;
-		
-		// 更新本地配置文件
-		Thread thread = new Thread(new Runnable() {
-			@Override
-			public void run() {
-				while (true) {
-					try {
-						updatePkgToHosts();
-						Thread.sleep(3000);
-					} catch (Exception e) {
-						LOGGER.error("updatePkgToHosts fail", e);
-					}				
-				}
-			}
-		});
-		thread.setName("SOA-updatePkgToHosts-thread");
-		thread.setDaemon(true);
-		thread.start();
-		
-		// 检查服务器存活情况
-		Thread thread2 = new Thread(new Runnable() {
-			@Override
-			public void run() {
-				while (true) {
-					try {
-						checkHostsLive();
-						Thread.sleep(1000);
-					} catch (Exception e) {
-						LOGGER.error("checkHostsLive fail", e);
-					}				
-				}
-			}
-		});
-		thread2.setName("SOA-checkHostsLive-thread");
-		thread2.setDaemon(true);
-		thread2.start();
-		
-		// 更新redis的urls，10秒更新一次，更新不到不清空
-		Thread thread3 = new Thread(new Runnable() {
-			@Override
-			public void run() {
-				while (true) {
-					try {
-						updateRedisUrl();
-						Thread.sleep(10000);
-					} catch (Exception e) {
-						LOGGER.error("updateRedisUrl fail", e);
-					}				
-				}
-			}
-		});
-		thread3.setName("SOA-sync-Redis-urls");
-		thread3.setDaemon(true);
-		thread3.start();
-	}
-	
+	/**更新redis url，把所有可用的ip放到列表中*/
 	private static void updateRedisUrl() {
 		for(Entry<String, List<String>> entry : redisInterfToUrls.entrySet()) {
 			List<String> urls = getRedisUrlAndFilterIp(entry.getKey());
-			// 只有当urls不为空，才会更新，避免redis挂掉的情况。因为urls宜多不宜少
 			entry.setValue(urls);
 		}
 	}
 	
 	/**
-	 * 检查服务器是否存活
+	 * 检查服务器是否存活，失效的则移除掉。
 	 */
 	private static synchronized void checkHostsLive() {
-		// 检查本地的，因为livePkgToHosts可能删除key，所以使用全量替换
-		Map<String, List<String>> _livePkgToHosts = new HashMap<String, List<String>>();
-		
-		for(Entry<String, List<String>> entry : pkgToHosts.entrySet()) {
-			List<String> lives = new ArrayList<String>();
-			for(String str : entry.getValue()) {
-				boolean isLive = isUrlHostAlive(str);
-				if(isLive) {
-					lives.add(str);
-				} else {
-					LOGGER.warn("host {} is inavaliable", str);
-				}
-			}
-			
-			if(lives.isEmpty()) {
-				LOGGER.error("package {} has no avaliable hosts", entry.getKey());
-			}
-			_livePkgToHosts.put(entry.getKey(), lives);
-		}
-		livePkgToHosts = _livePkgToHosts;
-		
 		// 检查redis的，局部替换即可,不会减少key
 		for(Entry<String, List<String>> entry : redisInterfToUrls.entrySet()) {
 			List<String> lives = new ArrayList<String>();
 			for(String str : entry.getValue()) {
-				boolean isLive = isUrlHostAlive(str);
-				if(isLive) {
+				if(NetUtils.checkUrlAlive(str)) {
 					lives.add(str);
 				} else {
 					LOGGER.warn("host {} is inavaliable", str);
 				}
 			}
 			if(lives.isEmpty()) {
-				LOGGER.error("class {} has no avaliable hosts in redis", entry.getKey());
+				LOGGER.error("class {} has no avaliable hosts in redis.", entry.getKey());
+			} else {
+				entry.setValue(lives);// 在全部失效的情况下，不移除，因为移除也没有意义。还可能是本机网络中断的原因。
 			}
-			entry.setValue(lives);
-		}
-	}
-	
-	/**
-	 * 检查url对应的ip 端口是否可用
-	 * @param url
-	 * @return
-	 */
-	private static boolean isUrlHostAlive(String url) {
-		if(url == null) {
-			return false;
 		}
 		
-		if(url.startsWith("http://")) {
-			url = url.substring("http://".length());
-		} else if (url.startsWith("https://")) {
-			url = url.substring("https://".length());
-		}
-		int index = url.indexOf("/");
-		if(index >= 0) {
-			url = url.substring(0, index);
-		}
-		
-		index = url.indexOf(":");
-		String ip = null, port = null;
-		if(index > 0) {
-			ip = url.substring(0, index);
-			port = url.substring(index + 1);
-		} else {
-			ip = url;
-			port = "80"; // 内网不考虑https
-		}
-		
-		boolean isLive = checkPort(ip, port);
-		return isLive;
-	}
-	
-	/**
-	 * 检查端口是否可用，超时是1s
-	 * @param ip
-	 * @param port
-	 * @return
-	 */
-	private static boolean checkPort(String ip, String port) {
-		Socket client = null;
-		try {
-			client = new Socket(ip, Integer.valueOf(port)); // 默认超时是1s，可以改的，但1s合理
-			return true;
-		} catch (Throwable e) {
-			return false;
-		} finally {
-			if(client != null) {
-				try {
-					client.close();
-				} catch (Throwable e) {
-					
+		// 检查本地的，因为livePkgToHosts可能删除key，所以使用全量替换
+		Map<String, List<String>> _livePkgToHosts = new HashMap<String, List<String>>();
+		for(Entry<String, List<String>> entry : pkgToHosts.entrySet()) {
+			List<String> lives = new ArrayList<String>();
+			for(String str : entry.getValue()) {
+				if(NetUtils.checkUrlAlive(str)) {
+					lives.add(str);
+				} else {
+					LOGGER.warn("host {} is inavaliable", str);
 				}
 			}
+			if(lives.isEmpty()) {
+				LOGGER.error("class {} has no avaliable hosts in local.", entry.getKey());
+			} else {
+				_livePkgToHosts.put(entry.getKey(), lives); // 全部失效不移除
+			}
 		}
+		livePkgToHosts = _livePkgToHosts;
 	}
-		
+	
 	private static File getExistFile() {
 		if(confPaths == null) {
 			return null;
@@ -309,7 +256,7 @@ public class SOAClient {
 			return null;
 		}
 		
-		// 本地优先
+		// 本地配置优先
 		String matchedKey = null;
 		for(Entry<String, List<String>> entry : livePkgToHosts.entrySet()) {
 			if(clazz.getName().startsWith(entry.getKey())) {
@@ -331,16 +278,44 @@ public class SOAClient {
 			}
 		}
 		
-		// 如果不是本地指定，那么采用就近原则，优先取本机的
-		List<String> preferUrls = new ArrayList<>();
-		for(String url : urls) {
-			try {
-				URL _url = new URL(url);
-				if(thisMathineIps.contains(_url.getHost())) {
-					preferUrls.add(url);
+		// 确定下是否本机ip优先
+		if(Configs.getNetworkUseLocal()) {
+			List<String> preferUrls = new ArrayList<>();
+			for(String url : urls) {
+				try {
+					URL _url = new URL(url);
+					if(thisMathineIps.contains(_url.getHost())) {
+						preferUrls.add(url);
+					}
+				} catch (MalformedURLException e) { // ignore
 				}
-			} catch (MalformedURLException e) {
-				// ignore
+			}
+			if(!preferUrls.isEmpty()) {
+				return preferUrls;
+			}
+		}
+		
+		// 确定是否有内网外网优先配置
+		List<String> preferUrls = new ArrayList<>();
+		if("inner".equalsIgnoreCase(Configs.getNetworkPrefer())) {
+			for(String url : urls) {
+				try {
+					URL _url = new URL(url);
+					if(NetUtils.isIpLAN(_url.getHost())) {
+						preferUrls.add(url);
+					}
+				} catch (MalformedURLException e) {
+				}
+			}
+		} else if ("outer".equalsIgnoreCase(Configs.getNetworkPrefer())) {
+			for(String url : urls) {
+				try {
+					URL _url = new URL(url);
+					if(!NetUtils.isIpLAN(_url.getHost())) {
+						preferUrls.add(url);
+					}
+				} catch (MalformedURLException e) {
+				}
 			}
 		}
 		
@@ -426,50 +401,53 @@ public class SOAClient {
 		}
 	}
 	
-	// 从redis那链接并过滤非本局域网的
+	/**
+	 * 从redis拿链接：
+	 * 1. 同步更新redisInterfTemplate
+	 * 2. 去掉不同局域网的。虽然不同的局域网也可以访问，但在实际场景中，这种情况太少。后面需要再做成配置化的吧。
+	 * 3. 只留下alive可以连通的。如果全部都不联调，那么不过滤
+	 * @param key
+	 * @return
+	 */
 	private static List<String> getRedisUrlAndFilterIp(String key) {
 		List<String> urls = RedisUtils.getURLs(key);
 		if(urls != null && !urls.isEmpty()) {
 			redisInterfTemplate.put(key, urls.get(0));
 		}
 		
-		// XXX 目前按最简单的方式判断局域网,后续再优化.
-		// TODO 优先使用外网，除非是本机ip
-		// 一般云服务是10.或172.的局域网，本地是192.168.的ip
+		// 一般云服务器是10.的局域网，本地是192.168.或172.16~31的ip
 		List<String> newUrls = new ArrayList<>();
 		for(String url : urls) {
 			try {
 				URL _url = new URL(url);
 				String host = _url.getHost();
-				if(host.startsWith("10.")) {
-					for(String localIp : thisMathineIps) {
-						if(localIp.startsWith("10.")) {
-							newUrls.add(url);
-							break;
+				boolean isLAN = false;
+				for(int i = 1; i <= 3; i++) { // 检查3类局域网
+					if(NetUtils.isIpInRange(host, i)) {
+						for(String localIp : thisMathineIps) {
+							if(NetUtils.isIpInRange(localIp, 1)) {
+								newUrls.add(url);
+								isLAN = true;
+								break;
+							}
 						}
 					}
-				} else if (host.startsWith("172.")) {
-					for(String localIp : thisMathineIps) {
-						if(localIp.startsWith("172.")) {
-							newUrls.add(url);
-							break;
-						}
-					}
-				} else if (host.startsWith("192.168.")) {
-					for(String localIp : thisMathineIps) {
-						if(localIp.startsWith("192.168.")) {
-							newUrls.add(url);
-							break;
-						}
-					}
-				} else {
+					if(isLAN) break;
+				}
+				if(!isLAN) {
 					newUrls.add(url);
 				}
 			} catch (MalformedURLException e) {
 			}
 		}
 		
-		return newUrls;
+		List<String> liveUrls = new ArrayList<>();
+		for(String url : newUrls) {
+			if(NetUtils.checkUrlAlive(url)) {
+				liveUrls.add(url);
+			}
+		}
+		
+		return liveUrls.isEmpty() ? newUrls : liveUrls;
 	}
-	
 }
