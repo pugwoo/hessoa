@@ -442,6 +442,7 @@ public class SOAClient {
 			}
 		}
 		
+		// XXX 后续这里可以改成多线程，加快检测速度
 		List<String> liveUrls = new ArrayList<>();
 		for(String url : newUrls) {
 			if(NetUtils.checkUrlAlive(url)) {
