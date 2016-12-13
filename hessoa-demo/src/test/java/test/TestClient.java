@@ -23,8 +23,6 @@ public class TestClient {
 			System.out.println(info);
 			end = System.currentTimeMillis();
 			System.out.println("调用服务耗时:" + (end - start) + "ms");
-
-
 		}
 
 

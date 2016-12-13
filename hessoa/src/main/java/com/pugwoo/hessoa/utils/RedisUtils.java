@@ -151,11 +151,11 @@ public class RedisUtils {
 		}
 		
 		Set<String> keys = jedis.keys(getKeyPrefix(interfaceName) + "*");
+		List<String> values = jedis.mget(keys.toArray(new String[0]));
 		
 		List<String> urls = new ArrayList<String>();
-		for(String key : keys) {
-			String value = jedis.get(key);
-			if(value != null && !value.isEmpty()) {
+		for(String value : values) {
+			if(value != null && !value.trim().isEmpty()) {
 				urls.add(value);
 			}
 		}

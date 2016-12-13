@@ -421,18 +421,19 @@ public class SOAClient {
 			try {
 				URL _url = new URL(url);
 				String host = _url.getHost();
-				boolean isLAN = false;
+				boolean isLAN = false, isSameLAN = false;
 				for(int i = 1; i <= 3; i++) { // 检查3类局域网
 					if(NetUtils.isIpInRange(host, i)) {
+						isLAN = true;
 						for(String localIp : thisMathineIps) {
 							if(NetUtils.isIpInRange(localIp, 1)) {
 								newUrls.add(url);
-								isLAN = true;
+								isSameLAN = true;
 								break;
 							}
 						}
 					}
-					if(isLAN) break;
+					if(isSameLAN) break;
 				}
 				if(!isLAN) {
 					newUrls.add(url);
