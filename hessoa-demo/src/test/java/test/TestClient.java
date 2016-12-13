@@ -16,6 +16,7 @@ public class TestClient {
 //			IUserService userService = SOAClient.getService(IUserService.class,
 //					"http://127.0.0.1:8080/hessoa-demo/_hessoa/userServiceImpl"); 
 			long end = System.currentTimeMillis();
+			System.out.println(userService.toString());
 			System.out.println("获取服务耗时:" + (end - start) + "ms");
 			
 			start = System.currentTimeMillis();
