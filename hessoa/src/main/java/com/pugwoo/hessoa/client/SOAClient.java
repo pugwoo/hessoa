@@ -426,7 +426,7 @@ public class SOAClient {
 					if(NetUtils.isIpInRange(host, i)) {
 						isLAN = true;
 						for(String localIp : thisMathineIps) {
-							if(NetUtils.isIpInRange(localIp, 1)) {
+							if(NetUtils.isIpInRange(localIp, i)) {
 								newUrls.add(url);
 								isSameLAN = true;
 								break;
