@@ -6,7 +6,8 @@
 	                    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.2.xsd ">
 
     <!-- 开启HessianService注解 -->
-	<bean id="scanner" class="com.pugwoo.hessoa.annotation.HessianServiceScanner">
+	<bean id="scanner" class="com.pugwoo.hessoa.annotation.HessianServiceScanner" 
+	    destroy-method="removeRedis">
 	   <property name="basePackage" value="." />
 	</bean>
 	

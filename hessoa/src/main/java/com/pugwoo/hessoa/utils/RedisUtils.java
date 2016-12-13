@@ -29,6 +29,9 @@ public class RedisUtils {
 	
 	private static String redisKeyPrefix = "";
 	
+	// 存放java进程放到redis的key
+	public static List<String> thisProcessKeys = new ArrayList<>();
+	
 	static {
 		String host = Configs.getRedisHost();
 		String port = Configs.getRedisPort();
@@ -90,6 +93,22 @@ public class RedisUtils {
 				+ interfaceName + "-";
 	}
 	
+	public static boolean removeKey(List<String> key) {
+		if(key == null || key.isEmpty()) {
+			return true;
+		}
+		
+		Jedis jedis = getJedisConnection();
+		if(jedis == null) {
+			return false;
+		}
+		
+		jedis.del(key.toArray(new String[0]));
+		
+		jedis.close();
+		return true;
+	}
+	
 	/**
 	 * 将url加入到redis中
 	 * @param interfaceName
@@ -107,6 +126,7 @@ public class RedisUtils {
 				URL _url = new URL(url);
 				String key = getKeyPrefix(interfaceName) + _url.getHost() + "-" 
 						+ (_url.getPort() > 0 ? _url.getPort() : _url.getDefaultPort());
+				thisProcessKeys.add(key);
 				
 				// 说明一下，这里之所以加上ip-port，是因为redis没有办法为子元素设置超时时间，所以就抽上来一层
 				jedis.setex(key, expireSeconds, url);

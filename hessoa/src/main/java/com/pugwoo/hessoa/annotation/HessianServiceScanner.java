@@ -25,6 +25,7 @@ import org.springframework.util.StringUtils;
 
 import com.pugwoo.hessoa.register.SOAHessianServiceExporter;
 import com.pugwoo.hessoa.utils.Constants;
+import com.pugwoo.hessoa.utils.RedisUtils;
 
 /**
  * 2015年1月6日 14:54:54
@@ -40,6 +41,10 @@ public class HessianServiceScanner implements BeanFactoryPostProcessor,
 	 * 扫描@HessianService注解的bean所在的包，支持通配符*
 	 */
 	private String basePackage;
+	
+	public void removeRedis() {
+		RedisUtils.removeKey(RedisUtils.thisProcessKeys);
+	}
 
 	@Override
 	public void postProcessBeanFactory(

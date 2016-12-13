@@ -41,6 +41,8 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 	
 	private String beanName; // 就是url，由注解HessianServiceScanner注入
 	
+	private static List<String> urls = new ArrayList<String>();
+		
 	/**
 	 * 获取当前容器的ipv4的访问ip:port
 	 * 
@@ -69,7 +71,6 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 
 	@Override
 	public void setServletConfig(ServletConfig servletConfig) {
-		final List<String> urls = new ArrayList<String>();
 		ServletContext servletContext = servletConfig.getServletContext();
 		try {
 			List<String> endPoints = getEndPoints();			
