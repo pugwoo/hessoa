@@ -40,7 +40,7 @@ public class Configs {
 		if(redisKeyPrefix == null) {
 			return null;
 		}
-		return "";
+		return redisKeyPrefix;
 	}
 	
 	/**获得是否优先从本地拿服务，默认false，本地调试可以设置为true。当它为true时，它会一直从本机拿，100%概率*/
