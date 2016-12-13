@@ -75,12 +75,14 @@ public class RedisUtils {
 		if(pool == null) {
 			return null;
 		}
-		try {
-			return pool.getResource();
-		} catch (Exception e) {
-			LOGGER.error("getJedisConnection fail", e);
-			return null;
+		for(int i = 0; i < 10; i++) { // 每100ms重试一次，重试10次
+			try {
+				return pool.getResource();
+			} catch (Exception e) {
+				LOGGER.error("getJedisConnection fail", e);
+			}
 		}
+		return null;
 	}
 	
 	public static boolean isConfigRedis() {

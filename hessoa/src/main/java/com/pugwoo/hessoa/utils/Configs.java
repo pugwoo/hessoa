@@ -70,6 +70,15 @@ public class Configs {
 		return Integer.valueOf(networkCheckTimeout);
 	}
 	
+	/**第一次从redis拿url时，是否检查url的alive，默认true*/
+	public static boolean isFirstGetCheckAlive() {
+		String isFirstGetCheck = prop.getProperty("network.check.first");
+		if("false".equalsIgnoreCase(isFirstGetCheck)) {
+			return false;
+		}
+		return true;
+	}
+	
 	static {
 		String env = System.getProperty("env");
 		if(env == null || env.trim().isEmpty()) {

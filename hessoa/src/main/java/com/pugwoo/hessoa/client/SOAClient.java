@@ -182,7 +182,7 @@ public class SOAClient {
 	/**更新redis url，把所有可用的ip放到列表中*/
 	private static void updateRedisUrl() {
 		for(Entry<String, List<String>> entry : redisInterfToUrls.entrySet()) {
-			List<String> urls = getRedisUrlAndFilterIp(entry.getKey());
+			List<String> urls = getRedisUrlAndFilterIp(entry.getKey(), false);
 			entry.setValue(urls);
 		}
 	}
@@ -249,7 +249,7 @@ public class SOAClient {
 	private static List<String> getUrlByClass(Class<?> clazz) {
 		List<String> urls = redisInterfToUrls.get(clazz.getName());
 		if(urls == null) { // 第一次拿
-			urls = getRedisUrlAndFilterIp(clazz.getName());
+			urls = getRedisUrlAndFilterIp(clazz.getName(), true);
 			redisInterfToUrls.put(clazz.getName(), urls);
 		}
 		if(urls == null || urls.isEmpty()) {
@@ -409,7 +409,7 @@ public class SOAClient {
 	 * @param key
 	 * @return
 	 */
-	private static List<String> getRedisUrlAndFilterIp(String key) {
+	private static List<String> getRedisUrlAndFilterIp(String key, boolean isFirstGet) {
 		List<String> urls = RedisUtils.getURLs(key);
 		if(urls != null && !urls.isEmpty()) {
 			redisInterfTemplate.put(key, urls.get(0));
@@ -442,14 +442,17 @@ public class SOAClient {
 			}
 		}
 		
-		// XXX 后续这里可以改成多线程，加快检测速度
-		List<String> liveUrls = new ArrayList<>();
-		for(String url : newUrls) {
-			if(NetUtils.checkUrlAlive(url)) {
-				liveUrls.add(url);
+		// 如果配置了第一次拿不检测
+		if(!isFirstGet || Configs.isFirstGetCheckAlive()) {
+			List<String> liveUrls = new ArrayList<>();
+			for(String url : newUrls) {
+				if(NetUtils.checkUrlAlive(url)) {
+					liveUrls.add(url);
+				}
 			}
+			return liveUrls.isEmpty() ? newUrls : liveUrls;
+		} else {
+			return newUrls;
 		}
-		
-		return liveUrls.isEmpty() ? newUrls : liveUrls;
 	}
 }
