@@ -4,6 +4,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.pugwoo.hessoa.client.SOAClient;
+
+import spring_remote.api.service.IUserService;
+
 @Controller
 public class HelloController {
 
@@ -11,6 +15,25 @@ public class HelloController {
 	@RequestMapping("/hello")
 	public String hello() {
 		return "hello";
+	}
+	
+	@ResponseBody
+	@RequestMapping("/remote")
+	public String getRemote() {
+		StringBuilder sb = new StringBuilder();
+		
+		long start = System.currentTimeMillis();
+		IUserService userService = SOAClient.getService(IUserService.class);
+		long end = System.currentTimeMillis();
+		
+		sb.append("getService cost:" + (end - start) + "ms,");
+		
+		start = System.currentTimeMillis();
+		String info = userService.getInfo();
+		end = System.currentTimeMillis();
+		sb.append("call service cost:" + (end - start) + "ms, info:" + info);
+		
+		return sb.toString();
 	}
 	
 	/**
