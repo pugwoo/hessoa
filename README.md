@@ -10,6 +10,8 @@ hessoa的使用请详见hessoa-demo。
 
 目前支持redis作为配置中心，在线上环境中，跑起来需要redis服务器。
 
+请先在本地安装一个redis，默认端口无密码即可，然后即可跑起hessoa-demo项目。
+
 # 其它说明
 
 当Spring MVC有配置全局的异常处理器时，如果Hessian的服务抛出异常，那么异常可能会被全局拦截器拦截到，如果拦截到，那么
@@ -20,5 +22,7 @@ public ModelAndView resolveException(HttpServletRequest request, HttpServletResp
 	Exception ex)
 ```
 
-拦截方法的handler参数是`com.pugwoo.hessoa.register.SOAHessianServiceExporter`对象。
+拦截方法的handler参数是`com.pugwoo.hessoa.register.SOAHessianServiceExporter`对象，请特殊处理掉。
+
+另外，对于Spring MVC的登录拦截器，它也会处理到`/_hessoa/`开头的链接，此时也需要在登录拦截器中对以`/_hessoa/`开头的链接特殊处理。
 
