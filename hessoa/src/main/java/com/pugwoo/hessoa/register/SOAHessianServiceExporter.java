@@ -41,7 +41,7 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 	
 	private String beanName; // 就是url，由注解HessianServiceScanner注入
 	
-	private static List<String> urls = new ArrayList<String>();
+	private List<String> urls = new ArrayList<String>();
 		
 	/**
 	 * 获取当前容器的ipv4的访问ip:port
