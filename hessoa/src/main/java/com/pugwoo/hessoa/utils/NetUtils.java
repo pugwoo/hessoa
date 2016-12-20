@@ -105,7 +105,7 @@ public class NetUtils {
 	}
 	
 	/**
-	 * 获得本机的ipv4的所有ip列表，返回的是网卡别称 -> ip 的map <br>
+	 * 获得本机的ipv4的所有ip列表，返回的是网卡别称  到 ip 的map <br>
 	 * 排除本机ip 127.开头的
 	 * @return
 	 */
