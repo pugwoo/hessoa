@@ -65,12 +65,12 @@ public class HessianServiceScanner implements BeanFactoryPostProcessor,
 			AnnotationBeanNameGenerator {
 
 		/**
-		 * 将bean名称设置为@HessianService注解的value名称
+		 * 将bean名称设置为@HessianService注解的实现类的className
 		 */
 		protected String determineBeanNameFromAnnotation(
 				AnnotatedBeanDefinition annotatedDef) {
 			AnnotationMetadata amd = annotatedDef.getMetadata();
-			return (String) getAnnotationValue(amd, "value");
+			return amd.getClassName();
 		}
 	}
 	
@@ -109,7 +109,7 @@ public class HessianServiceScanner implements BeanFactoryPostProcessor,
 					String originalBeanName = this.beanNameGenerator.generateBeanName(candidate, this.registry);
 					String beanName = this.exporterBeanNameGenerator.generateBeanName(candidate, this.registry);
 					
-					if(beanName == null || beanName.trim().isEmpty()) {
+					if(beanName == null || beanName.isEmpty()) {
 						beanName = candidate.getBeanClassName(); // 确保beanName有值
 					}
 					
@@ -126,21 +126,17 @@ public class HessianServiceScanner implements BeanFactoryPostProcessor,
 						throw new RuntimeException("@HessianService bean must implement at least one interface");
 					}
 					Class<?> interf = null;
-					try {
-						// 查看一下是否有注解接口HessianService.class是默认，不用的
-						Class<?> annoInterf = (Class<?>) getAnnotationValue(bd.getMetadata(), "interf");
-						if(annoInterf != null && annoInterf != Object.class) {
-							if(annoInterf.isInterface()) {
-								interf = annoInterf;
-							} else {
-								throw new RuntimeException("@HessianService interf must be interface class");
-							}
+					Class<?> annoInterf = (Class<?>) getAnnotationValue(bd.getMetadata(), "value");
+					if(annoInterf != null) {
+						if(annoInterf.isInterface()) {
+							interf = annoInterf;
 						} else {
-							interf = Class.forName(interfaces[0]);
+							throw new RuntimeException("@HessianService value must be interface class");
 						}
-					} catch (ClassNotFoundException e) {
-						continue;
+					} else {
+						throw new RuntimeException("@HessianService must have value (interface)");
 					}
+	
 					
 					/**
 					 * 下面这一段，实际上等价于xml配置

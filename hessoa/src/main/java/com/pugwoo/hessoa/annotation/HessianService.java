@@ -14,19 +14,11 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface HessianService {
-
+	
 	/**
-	 * 对外暴露的hessian url名称，例如'myService'
+	 * 需要暴露的接口，必须指定。
 	 * @return
 	 */
-    String value() default "";
-    
-    /**
-     * 当注解的实现类有多个实现时，可以自行指定实现接口，
-     * 否则按Java返回接口列表选择第一个。
-     * 建议指定接口。
-     * @return
-     */
-    Class<?> interf() default Object.class;
+	Class<?> value();
     
 }
