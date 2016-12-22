@@ -153,6 +153,9 @@ public class RedisUtils {
 		}
 		
 		Set<String> keys = jedis.keys(getKeyPrefix(interfaceName) + "*");
+		if(keys == null || keys.isEmpty()) {
+			return new ArrayList<String>();
+		}
 		List<String> values = jedis.mget(keys.toArray(new String[0]));
 		
 		List<String> urls = new ArrayList<String>();
