@@ -51,7 +51,7 @@ public class NetUtils {
 		
 		return false;
 	}
-		
+	
 	/**
 	 * 检查链接是否可以联通, url支持各种不规范的写法，例如http://或https://开头等。
 	 * 超时配置取自Configs的超时配置
@@ -80,7 +80,7 @@ public class NetUtils {
 		int port = 0;
 		if(index > 0) {
 			ip = url.substring(0, index);
-			port = Integer.valueOf(index + 1);
+			port = Integer.valueOf(url.substring(index + 1));
 		} else {
 			ip = url;
 			port = defaultPort;
