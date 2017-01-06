@@ -151,17 +151,14 @@ public class RedisUtils {
 		if(jedis == null) {
 			return new ArrayList<String>();
 		}
-		
 		Set<String> keys = jedis.keys(getKeyPrefix(interfaceName) + "*");
 		List<String> values = jedis.mget(keys.toArray(new String[0]));
-		
 		List<String> urls = new ArrayList<String>();
 		for(String value : values) {
 			if(value != null && !value.trim().isEmpty()) {
 				urls.add(value);
 			}
 		}
-		
 		jedis.close();
 		return urls;
 	}

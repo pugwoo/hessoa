@@ -14,10 +14,9 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.pugwoo.hessoa.context.HessianProxyFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.caucho.hessian.client.HessianProxyFactory;
 import com.pugwoo.hessoa.utils.Configs;
 import com.pugwoo.hessoa.utils.NetUtils;
 import com.pugwoo.hessoa.utils.RedisUtils;
@@ -332,7 +331,7 @@ public class SOAClient {
 		if(clazz == null) {
 			return null;
 		}
-		
+
 		List<String> urlList = getUrlByClass(clazz);
 		if(urlList == null || urlList.isEmpty()) {
 			LOGGER.error("class {} has no url configured.", clazz.getName());
@@ -372,8 +371,8 @@ public class SOAClient {
 		if(url == null) {
 			return null;
 		}
-
 		HessianProxyFactory factory = new HessianProxyFactory();
+
 		factory.setOverloadEnabled(true); 
 		try {
 			@SuppressWarnings("unchecked")

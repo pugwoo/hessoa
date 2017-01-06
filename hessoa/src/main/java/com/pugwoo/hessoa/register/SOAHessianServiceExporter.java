@@ -6,10 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,14 +15,21 @@ import javax.management.ObjectName;
 import javax.management.Query;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
+import com.caucho.services.server.ServiceContext;
+import com.pugwoo.hessoa.context.HessianHeaderContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.remoting.caucho.HessianServiceExporter;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.context.ServletConfigAware;
 
 import com.pugwoo.hessoa.utils.NetUtils;
 import com.pugwoo.hessoa.utils.RedisUtils;
+import org.springframework.web.util.NestedServletException;
 
 /**
  * 用于自动向配置中心注册当前提供的服务的信息，最主要的就是连接地址:
@@ -41,7 +45,7 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 	
 	private String beanName; // 就是url，由注解HessianServiceScanner注入
 	
-	private static List<String> urls = new ArrayList<String>();
+	private List<String> urls = new ArrayList<String>();
 		
 	/**
 	 * 获取当前容器的ipv4的访问ip:port
@@ -122,7 +126,36 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 			}
 		}
 	}
-	
+	@Override
+	public void handleRequest(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+
+		if (!"POST".equals(request.getMethod())) {
+			throw new HttpRequestMethodNotSupportedException(request.getMethod(),
+					new String[] {"POST"}, "HessianServiceExporter only supports POST requests");
+		}
+
+		handleHessianHeader(request);
+
+		response.setContentType(CONTENT_TYPE_HESSIAN);
+		try {
+			invoke(request.getInputStream(), response.getOutputStream());
+		} catch (Throwable ex) {
+			throw new NestedServletException("Hessian skeleton invocation failed", ex);
+		} finally {
+			HessianHeaderContext.close();
+		}
+	}
+
+	protected void handleHessianHeader(HttpServletRequest request) {
+		HessianHeaderContext context = HessianHeaderContext.getContext();
+		Enumeration enumeration = request.getHeaderNames();
+		while (enumeration.hasMoreElements()) {
+			String name = enumeration.nextElement().toString();
+			String value = request.getHeader(name);
+			context.addHeader(name, value);
+		}
+	}
 	/**
 	 * 读取web.xml来获取到servletName对应的url-mapping的原始值，可能有多个或0个
 	 * 
