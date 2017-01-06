@@ -1,6 +1,7 @@
 package test;
 
 import com.pugwoo.hessoa.client.SOAClient;
+import com.pugwoo.hessoa.client.SOAClientContext;
 
 import spring_remote.api.service.IUserService;
 
@@ -8,9 +9,14 @@ public class TestClient {
 
 	public static void main(String[] args) throws Exception {
 		for(int i = 0; i < 10; i++) {
+			
 			// 自动获得服务的引用
 			long start = System.currentTimeMillis();
 			IUserService userService = SOAClient.getService(IUserService.class);
+			
+			// 放些上下文
+			SOAClientContext.add("loginUserId", "3");
+			SOAClientContext.add("loginUserName", "nick");
 			
 			// 指定绝对地址的方式，用于调试
 //			IUserService userService = SOAClient.getService(IUserService.class,
@@ -25,7 +31,6 @@ public class TestClient {
 			end = System.currentTimeMillis();
 			System.out.println("调用服务耗时:" + (end - start) + "ms");
 		}
-
 
 		// Thread.sleep(300000); // 观察SOAClient
 	}

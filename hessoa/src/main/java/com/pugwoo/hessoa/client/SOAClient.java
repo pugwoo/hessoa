@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.caucho.hessian.client.HessianProxyFactory;
+import com.pugwoo.hessoa.context.HessianProxyFactory;
 import com.pugwoo.hessoa.utils.Configs;
 import com.pugwoo.hessoa.utils.NetUtils;
 import com.pugwoo.hessoa.utils.RedisUtils;
@@ -349,7 +349,7 @@ public class SOAClient {
 			url = urlList.get(index);
 		}
 		
-		HessianProxyFactory factory = new HessianProxyFactory();
+		HessianProxyFactory factory = new HessianProxyFactory(); // 这里使用继承后带头部context的
 		factory.setOverloadEnabled(true); 
 		try {
 			@SuppressWarnings("unchecked")

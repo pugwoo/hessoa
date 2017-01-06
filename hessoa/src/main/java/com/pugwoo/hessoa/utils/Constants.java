@@ -10,4 +10,8 @@ public interface Constants {
 
 	/**redis配置文件名称*/
 	String HESSOA_REIDS_PROPERTIES_FILE = "/hessoa-redis-${env}.properties";
+	
+	String HESSOA_CONTEXT_HEADER_PREFIX = "_hsoa_";
+	
+	String HESSOA_CONTEXT_USER_PREFIX = "user_";
 }

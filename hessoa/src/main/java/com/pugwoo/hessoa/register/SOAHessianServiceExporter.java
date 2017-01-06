@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -18,12 +19,17 @@ import javax.management.ObjectName;
 import javax.management.Query;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.remoting.caucho.HessianServiceExporter;
 import org.springframework.web.context.ServletConfigAware;
 
+import com.pugwoo.hessoa.context.HessianHeaderContext;
+import com.pugwoo.hessoa.utils.Constants;
 import com.pugwoo.hessoa.utils.NetUtils;
 import com.pugwoo.hessoa.utils.RedisUtils;
 
@@ -42,31 +48,30 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 	private String beanName; // 就是url，由注解HessianServiceScanner注入
 	
 	private List<String> urls = new ArrayList<String>();
-		
+	
 	/**
-	 * 获取当前容器的ipv4的访问ip:port
-	 * 
-	 * @return
-	 * @throws Exception
+	 * 读取自定义的header，并全量放到HessianHeaderContext中
+	 * @param request
+	 * @param response
+	 * @throws ServletException
+	 * @throws IOException
 	 */
-	private List<String> getEndPoints() throws Exception {
-		List<String> endPoints = new ArrayList<String>();
-		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-		Set<ObjectName> objs = mbs.queryNames(new ObjectName(
-				"*:type=Connector,*"), Query.match(Query.attr("protocol"),
-				Query.value("HTTP/1.1")));
-		List<String> addresses = NetUtils.getIpv4IPs();
+	@Override
+	public void handleRequest(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 		
-		for (Iterator<ObjectName> i = objs.iterator(); i.hasNext();) {
-			ObjectName obj = i.next();
-			String scheme = mbs.getAttribute(obj, "scheme").toString();
-			String port = obj.getKeyProperty("port");
-			for (String ip : addresses) {
-				String ep = scheme + "://" + ip + ":" + port;
-				endPoints.add(ep);
-			}
+		HessianHeaderContext.clear();
+		Enumeration<String> enumeration = request.getHeaderNames();
+		while (enumeration.hasMoreElements()) {
+		 	String name = enumeration.nextElement().toString();
+		 	String value = request.getHeader(name);
+		 	if(name != null && name.startsWith(Constants.HESSOA_CONTEXT_HEADER_PREFIX)) {
+		 		HessianHeaderContext.add(name.substring(Constants.HESSOA_CONTEXT_HEADER_PREFIX.length()),
+		 				value);
+		 	}
 		}
-		return endPoints;
+		
+		super.handleRequest(request, response);
 	}
 
 	@Override
@@ -121,6 +126,32 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 				thread.start();
 			}
 		}
+	}
+	
+	/**
+	 * 获取当前容器的ipv4的访问ip:port
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	private List<String> getEndPoints() throws Exception {
+		List<String> endPoints = new ArrayList<String>();
+		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+		Set<ObjectName> objs = mbs.queryNames(new ObjectName(
+				"*:type=Connector,*"), Query.match(Query.attr("protocol"),
+				Query.value("HTTP/1.1")));
+		List<String> addresses = NetUtils.getIpv4IPs();
+		
+		for (Iterator<ObjectName> i = objs.iterator(); i.hasNext();) {
+			ObjectName obj = i.next();
+			String scheme = mbs.getAttribute(obj, "scheme").toString();
+			String port = obj.getKeyProperty("port");
+			for (String ip : addresses) {
+				String ep = scheme + "://" + ip + ":" + port;
+				endPoints.add(ep);
+			}
+		}
+		return endPoints;
 	}
 	
 	/**
