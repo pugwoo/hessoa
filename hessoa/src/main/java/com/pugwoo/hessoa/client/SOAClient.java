@@ -4,6 +4,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -18,6 +21,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.pugwoo.hessoa.context.HessianProxyFactory;
+import com.pugwoo.hessoa.exceptions.NoHessoaServerException;
+import com.pugwoo.hessoa.exceptions.WrongHessoaUrlException;
 import com.pugwoo.hessoa.utils.Configs;
 import com.pugwoo.hessoa.utils.NetUtils;
 import com.pugwoo.hessoa.utils.RedisUtils;
@@ -351,28 +356,46 @@ public class SOAClient {
 	 * 自动从redis中获得地址，必须依赖redis
 	 * 
 	 * @param clazz
-	 * @return 获取不到返回null
+	 * @return 
 	 */
-	public static <T> T getService(Class<T> clazz) {
+	@SuppressWarnings("unchecked")
+	public static <T> T getService(final Class<T> clazz) {
 		if(clazz == null) {
 			return null;
 		}
 		
-		String url = getOneUrlByClass(clazz);
-		if(url == null) {
-			return null;
-		}
-		
-		HessianProxyFactory factory = new HessianProxyFactory(); // 这里使用继承后带头部context的
-		factory.setOverloadEnabled(true); 
-		try {
-			@SuppressWarnings("unchecked")
-			T t = (T) factory.create(clazz, url);
-			return t;
-		} catch (MalformedURLException e) {
-			LOGGER.error("getService {} fail", clazz.getName(), e);
-			return null;
-		}
+		// 动态代理以实现负载均衡、host切换
+		Class<?>[] interfaces = new Class[1];
+		interfaces[0] = clazz;
+		return (T) Proxy.newProxyInstance(clazz.getClassLoader(),
+				interfaces, new InvocationHandler() {
+			@Override
+			public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+				
+				// XXX 暂不考虑每次初始化性能问题，后续再优化
+				
+				String url = getOneUrlByClass(clazz);
+				if(url == null) {
+					LOGGER.error("no hessoa server for interface {}", clazz);
+					throw new NoHessoaServerException("no hessoa server for interface " + 
+							clazz.toString());
+				}
+				
+				// 这里使用继承后带头部context的
+				HessianProxyFactory factory = new HessianProxyFactory(); 
+				factory.setOverloadEnabled(true); 
+				try {
+					T t = (T) factory.create(clazz, url);
+					Object result = method.invoke(t, args);
+					return result;
+				} catch (MalformedURLException e) {
+					LOGGER.error("wrong url {} for interface {}", url, clazz.getName(), e);
+				    throw new WrongHessoaUrlException("wrong url " + url + " for interface "
+				    		+ clazz.getName());
+				}
+				
+			}
+		});
 	}
 
 	/**
