@@ -4,13 +4,11 @@ Hessoa是基于Hessian的SOA框架。Hessian是很轻量级的SOA框架，虽然
 
 Hessoa通过注解的方式暴露服务，通过手工配置hosts路由的方式发现服务，但已经具备负载均衡和自动摘除和恢复服务的特性。
 
-hessoa的使用请详见hessoa-demo。
+hessoa的使用请详见hessoa-demo。【必须】请先在本地安装一个redis，默认端口无密码即可，然后即可跑起hessoa-demo项目。
 
 ## 配置中心
 
-目前支持redis作为配置中心，在线上环境中，跑起来需要redis服务器。
-
-请先在本地安装一个redis，默认端口无密码即可，然后即可跑起hessoa-demo项目。
+目前支持redis作为配置中心，在线上环境中，跑起来需要redis服务器。为了最好的体验，必须依赖redis作为配置中心。
 
 ## 关于上下文传递
 

@@ -323,16 +323,11 @@ public class SOAClient {
 	}
 	
 	/**
-	 * 自动从redis中获得地址，必须依赖redis
-	 * 
+	 * 随机获得一个远程服务url
 	 * @param clazz
 	 * @return
 	 */
-	public static <T> T getService(Class<T> clazz) {
-		if(clazz == null) {
-			return null;
-		}
-		
+	private static String getOneUrlByClass(Class<?> clazz) {
 		List<String> urlList = getUrlByClass(clazz);
 		if(urlList == null || urlList.isEmpty()) {
 			LOGGER.error("class {} has no url configured.", clazz.getName());
@@ -347,6 +342,25 @@ public class SOAClient {
 		} else {
 			int index = new Random().nextInt(urlListSize);
 			url = urlList.get(index);
+		}
+		
+		return url;
+	}
+	
+	/**
+	 * 自动从redis中获得地址，必须依赖redis
+	 * 
+	 * @param clazz
+	 * @return 获取不到返回null
+	 */
+	public static <T> T getService(Class<T> clazz) {
+		if(clazz == null) {
+			return null;
+		}
+		
+		String url = getOneUrlByClass(clazz);
+		if(url == null) {
+			return null;
 		}
 		
 		HessianProxyFactory factory = new HessianProxyFactory(); // 这里使用继承后带头部context的
