@@ -13,7 +13,21 @@
 			<artifactId>hessoa</artifactId>
 			<version>0.4.1-SNAPSHOT</version>
 		</dependency>
-
+		
+		<!-- for test -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-test</artifactId>
+			<version>4.2.8.RELEASE</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context-support</artifactId>
+			<version>4.2.8.RELEASE</version>
+			<scope>test</scope>
+		</dependency>
+		
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
