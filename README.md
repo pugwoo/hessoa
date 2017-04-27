@@ -43,6 +43,7 @@ network.check.first=true
 
 #extra ip, should config in /etc/hosts
 # 对于腾讯云和google云，其VPS上没有外网网卡，如果服务需要暴露给外网的调用者，那么hessoa自动注册时要告诉hessoa外网ip地址。这个外网ip地址每台机器不同，这里设计为配置hostname，然后在/etc/hosts中配置该hostname对应的ip地址，例如`123.34.56.7 hessoa_public_ip`
+# 如果服务器上有外网网卡ip，或者不需要暴露给外网，就不需要这一项了
 #network.public.hostname=hessoa_public_ip
 ```
 
