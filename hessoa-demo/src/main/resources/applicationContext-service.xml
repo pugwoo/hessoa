@@ -19,7 +19,7 @@
 	    <mvc:interceptor>
 			<mvc:mapping path="/**"/>
 			<mvc:exclude-mapping path="/login"/>
-			<bean class="spring_remote.web.interceptors.DefaultInterceptor">
+			<bean class="com.pugwoo.hessoa.test.web.interceptors.DefaultInterceptor">
 			    <property name="excludePrefix" value="/_hessoa/"/>
 			</bean>
 		</mvc:interceptor>
