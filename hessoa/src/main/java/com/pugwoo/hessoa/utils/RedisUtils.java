@@ -30,7 +30,7 @@ public class RedisUtils {
 	private static String redisKeyPrefix = "";
 	
 	// 存放java进程放到redis的key
-	public static List<String> thisProcessKeys = new ArrayList<>();
+	public static List<String> thisProcessKeys = new ArrayList<String>();
 	
 	static {
 		String host = Configs.getRedisHost();

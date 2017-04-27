@@ -13,7 +13,7 @@ public class TestBenchmarkMultiThread {
 		int threadNum = 10;
 		
 		long start = System.currentTimeMillis();
-		List<Thread> threads = new ArrayList<>();
+		List<Thread> threads = new ArrayList<Thread>();
 		for(int t = 0; t < threadNum; t++) {
 			Thread thread = new Thread(new Runnable() {
 				@Override

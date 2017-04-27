@@ -110,7 +110,7 @@ public class NetUtils {
 	 * @return
 	 */
 	public static List<String> getIpv4IPs() {
-		List<String> ips = new ArrayList<>();
+		List<String> ips = new ArrayList<String>();
 		String regex = "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
 		Pattern pattern = Pattern.compile(regex);
 		try {

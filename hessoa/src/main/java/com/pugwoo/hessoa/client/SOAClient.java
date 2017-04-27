@@ -67,7 +67,7 @@ public class SOAClient {
 	// redis上存放的从接口到url的映射,当本地拿过一次之后，服务就会自动来更新这个列表并检查服务是否存活
 	private static Map<String, List<String>> redisInterfToUrls = new ConcurrentHashMap<String, List<String>>();
 	// redis存放的从接口到url的映射，取一个作为模版
-	private static Map<String, String> redisInterfTemplate = new HashMap<>();
+	private static Map<String, String> redisInterfTemplate = new HashMap<String, String>();
 	
 	// 本机的ipv4 ip
 	private static List<String> thisMathineIps = NetUtils.getIpv4IPs();
@@ -277,7 +277,7 @@ public class SOAClient {
 				String host = hosts.get(index);
 				// 拿redis的接口来做替换
 				String url = redisInterfTemplate.get(clazz.getName());
-				List<String> result = new ArrayList<>();
+				List<String> result = new ArrayList<String>();
 				result.add(replaceUrl(url, host));
 				return result;
 			}
@@ -285,7 +285,7 @@ public class SOAClient {
 		
 		// 确定下是否本机ip优先
 		if(Configs.getNetworkUseLocal()) {
-			List<String> preferUrls = new ArrayList<>();
+			List<String> preferUrls = new ArrayList<String>();
 			for(String url : urls) {
 				try {
 					URL _url = new URL(url);
@@ -301,7 +301,7 @@ public class SOAClient {
 		}
 		
 		// 确定是否有内网外网优先配置
-		List<String> preferUrls = new ArrayList<>();
+		List<String> preferUrls = new ArrayList<String>();
 		if("inner".equalsIgnoreCase(Configs.getNetworkPrefer())) {
 			for(String url : urls) {
 				try {
@@ -453,7 +453,7 @@ public class SOAClient {
 		}
 		
 		// 一般云服务器是10.的局域网，本地是192.168.或172.16~31的ip
-		List<String> newUrls = new ArrayList<>();
+		List<String> newUrls = new ArrayList<String>();
 		for(String url : urls) {
 			try {
 				URL _url = new URL(url);
@@ -481,7 +481,7 @@ public class SOAClient {
 		
 		// 如果配置了第一次拿不检测
 		if(!isFirstGet || Configs.isFirstGetCheckAlive()) {
-			List<String> liveUrls = new ArrayList<>();
+			List<String> liveUrls = new ArrayList<String>();
 			for(String url : newUrls) {
 				if(NetUtils.checkUrlAlive(url)) {
 					liveUrls.add(url);
