@@ -4,11 +4,47 @@ Hessoa是基于Hessian的SOA框架。Hessian是很轻量级的SOA框架，虽然
 
 Hessoa通过注解的方式暴露服务，通过手工配置hosts路由的方式发现服务，但已经具备负载均衡和自动摘除和恢复服务的特性。
 
-hessoa的使用请详见hessoa-demo。【必须】请先在本地安装一个redis，默认端口无密码即可，然后即可跑起hessoa-demo项目。
+hessoa的使用请详见hessoa-demo。【必须】请先在本地安装一个redis，默认端口无密码即可，然后即可跑起hessoa-demo项目：将hessoa-demo war包部署到tomcat，然后main方式跑`test.TestClient`类即可。
 
 ## 配置中心
 
-目前支持redis作为配置中心，在线上环境中，跑起来需要redis服务器。为了最好的体验，必须依赖redis作为配置中心。
+目前支持redis作为配置中心，在线上环境中，跑起来需要redis服务器。为了最好的体验，必须依赖redis作为配置中心。目前服务端每30秒上报一次服务url给redis，过期时间为60秒，也即如果一台服务器超过1分钟没有上报服务，那么该台机器url将从配置中心删除。
+
+关于配置文件`hessoa-redis-${env}.properties`，约定是这个名称且放在classes根目录下，如果开发有不同的环境，那么通过设置java全局变量env来指定。例如开发环境`-Denv=dev`，线上环境`-Denv=idc`这样，对应的配置文件名称也相应修改，例如`hessoa-redis-dev.properties`和`hessoa-redis-idc.properties`。
+
+配置文件内容说明：
+
+```bash
+# 这3个是配置中心redis的链接配置
+redis.host=127.0.0.1
+redis.port=6379
+redis.password=
+
+# 这个是redis中服务器url的key的前缀，当多个环境共用一台redis，或者配置服务有set分区时，可以使用
+#redis.key.prefix default `empty_string`
+redis.key.prefix=idc
+
+# 是否优先使用本地的服务，本地、开发、测试机器建议设置为true，线上负载均衡建议设置为false
+#network.uselocal default false
+network.uselocal=false
+
+# 是否倾向于使用外网还是内网的服务，当开发环境服务在外网，本地开发在局域网时，建议设置为outer，这样不会调用到他人的机器上；线上环境建议设置为inner，优先使用内网
+#network.prefer default `empty_string`, values: outer, inner
+network.prefer=
+
+# 检查网络是否联调的超时值，单位毫秒，线上建议100，线下建议3000
+#network.check.timeout default 1000
+network.check.timeout=100
+
+# 第一次拿到服务时，是否检测该url是否可用。线上建议设置为true，本地或开发环境可以设置为false，节省启动时间。
+#network.check.first default true
+#is check network alive when first time get
+network.check.first=true
+
+#extra ip, should config in /etc/hosts
+# 对于腾讯云和google云，其VPS上没有外网网卡，如果服务需要暴露给外网的调用者，那么hessoa自动注册时要告诉hessoa外网ip地址。这个外网ip地址每台机器不同，这里设计为配置hostname，然后在/etc/hosts中配置该hostname对应的ip地址，例如`123.34.56.7 hessoa_public_ip`
+#network.public.hostname=hessoa_public_ip
+```
 
 ## 关于上下文传递
 
