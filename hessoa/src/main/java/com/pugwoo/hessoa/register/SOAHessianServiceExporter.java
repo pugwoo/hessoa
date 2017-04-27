@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
@@ -29,6 +30,7 @@ import org.springframework.remoting.caucho.HessianServiceExporter;
 import org.springframework.web.context.ServletConfigAware;
 
 import com.pugwoo.hessoa.context.HessianHeaderContext;
+import com.pugwoo.hessoa.utils.Configs;
 import com.pugwoo.hessoa.utils.Constants;
 import com.pugwoo.hessoa.utils.NetUtils;
 import com.pugwoo.hessoa.utils.RedisUtils;
@@ -129,8 +131,8 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 	}
 	
 	/**
-	 * 获取当前容器的ipv4的访问ip:port
-	 * 
+	 * 获取当前容器的ipv4的访问ip:port。
+	 * 返回值格式示例：http://192.168.0.1:8080
 	 * @return
 	 * @throws Exception
 	 */
@@ -142,6 +144,9 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 				Query.value("HTTP/1.1")));
 		List<String> addresses = NetUtils.getIpv4IPs();
 		
+		// 获得额外的ip地址
+		String networkPublicHostname = Configs.getNetworkPublicHostname();
+		
 		for (Iterator<ObjectName> i = objs.iterator(); i.hasNext();) {
 			ObjectName obj = i.next();
 			String scheme = mbs.getAttribute(obj, "scheme").toString();
@@ -150,7 +155,20 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 				String ep = scheme + "://" + ip + ":" + port;
 				endPoints.add(ep);
 			}
+			
+			if(!networkPublicHostname.isEmpty()) {
+				try {
+					InetAddress address = InetAddress.getByName(networkPublicHostname);
+					if(address != null) {
+						String ep = scheme + "://" + address.getHostAddress() + ":" + port;
+						endPoints.add(ep);
+					}
+				} catch (Throwable e) {
+					LOGGER.error("get networkPublicHostname:{} ip fail, ignore", networkPublicHostname, e);
+				}
+			}
 		}
+		
 		return endPoints;
 	}
 	

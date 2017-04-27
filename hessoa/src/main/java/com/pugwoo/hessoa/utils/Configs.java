@@ -79,6 +79,15 @@ public class Configs {
 		return true;
 	}
 	
+	/**拿到额外为hessoa配置的外网ip对应的hostname，一般这个hostname会配在/etc/hosts文件中*/
+	public static String getNetworkPublicHostname() {
+		String networkPublicHostname = prop.getProperty("network.public.hostname");
+		if(networkPublicHostname == null) {
+			networkPublicHostname = "";
+		}
+		return networkPublicHostname.trim();
+	}
+	
 	static {
 		String env = System.getProperty("env");
 		if(env == null || env.trim().isEmpty()) {

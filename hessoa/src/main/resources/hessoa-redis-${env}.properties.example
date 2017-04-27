@@ -17,3 +17,8 @@ network.check.timeout=100
 #network.check.first default true
 #is check network alive when first time get
 network.check.first=true
+
+#extra ip, should config in /etc/hosts
+# like: `123.234.5.6 hessoa_public_ip`, which is different in different machines
+# tencent cloud and google cloud need this
+#network.public.hostname=hessoa_public_ip
