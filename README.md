@@ -10,7 +10,7 @@ hessoa的使用请详见hessoa-demo。【必须】请先在本地安装一个red
 
 目前支持redis作为配置中心，在线上环境中，跑起来需要redis服务器。为了最好的体验，必须依赖redis作为配置中心。目前服务端每30秒上报一次服务url给redis，过期时间为60秒，也即如果一台服务器超过1分钟没有上报服务，那么该台机器url将从配置中心删除。
 
-关于配置文件`hessoa-redis-${env}.properties`，约定是这个名称且放在classes根目录下，如果开发有不同的环境，那么通过设置java全局变量env来指定。例如开发环境`-Denv=dev`，线上环境`-Denv=idc`这样，对应的配置文件名称也相应修改，例如`hessoa-redis-dev.properties`和`hessoa-redis-idc.properties`。
+关于配置文件`hessoa-redis-${env}.properties`，约定是这个名称且放在classes根目录下，如果开发有不同的环境，那么通过设置java全局变量env来指定。例如开发环境`-Denv=dev`，线上环境`-Denv=idc`这样，对应的配置文件名称也相应修改，例如`hessoa-redis-dev.properties`和`hessoa-redis-idc.properties`。这个名称是约定的，不支持自定义配置文件的名称，不支持更改全局变量env变量名。此为hessoa约定给使用者带来的限制，请注意。
 
 配置文件内容说明：
 
