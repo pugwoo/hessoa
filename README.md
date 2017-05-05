@@ -20,7 +20,7 @@ redis.host=127.0.0.1
 redis.port=6379
 redis.password=
 
-# 这个是redis中服务器url的key的前缀，当多个环境共用一台redis，或者配置服务有set分区时，可以使用
+# 这个是redis中服务器url的key的前缀，当多个环境共用一台redis，或者配置服务有set/group分区时，可以使用
 #redis.key.prefix default `empty_string`
 redis.key.prefix=idc
 
