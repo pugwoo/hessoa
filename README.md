@@ -24,7 +24,7 @@ redis.password=
 #redis.key.prefix default `empty_string`
 redis.key.prefix=idc
 
-# 是否优先使用本地的服务，本地、开发、测试机器建议设置为true，线上负载均衡建议设置为false
+# 是否优先使用本地的服务,如果本地有服务，则百分比从本地拿，如果本地没有服务，则会通过其它优先级拿。本地、开发、测试机器建议设置为true，线上负载均衡建议设置为false
 #network.uselocal default false
 network.uselocal=false
 
