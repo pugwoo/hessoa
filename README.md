@@ -51,6 +51,8 @@ network.check.first=true
 
 Hessoa内置支持SOA调用之间传递上下文信息，每个线程拥有独立的上下文信息。A应用在运行过程中，将数据放入SOA上下文中，调用`SOAClientContext.add("loginUserId", "3");`将登录信息放在SOA上下文中；此后，只要A应用调用了其它应用的SOA服务（无论多少次），那么对方就可以通过它自己的`SOAClientContext.get("loginUserId")`拿到A应用传递过来的信息。
 
+上下文传输的数据会转换成QueryString的形式传输，用户自己定义的全部上下文数据量，建议不超过4k。
+
 ## 关于内外网安全
 
 hessoa是基于标准的Servlet容器的，所以当hessoa和外网的接口在一起的时候，就可能导致hessoa的接口被外网访问到，导致安全问题。因此，在设计上，hessoa所有的接口都会以`/_hessoa/`开头，可以在nginx那边配置，所有请求到`/_hessoa/`的请求都禁止掉，即可从运维层面完全隔离和处理安全问题。

@@ -33,6 +33,7 @@ import com.pugwoo.hessoa.context.HessianHeaderContext;
 import com.pugwoo.hessoa.utils.Configs;
 import com.pugwoo.hessoa.utils.Constants;
 import com.pugwoo.hessoa.utils.NetUtils;
+import com.pugwoo.hessoa.utils.QueryStringUtils;
 import com.pugwoo.hessoa.utils.RedisUtils;
 
 /**
@@ -68,8 +69,8 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 		 	String name = enumeration.nextElement().toString();
 		 	String value = request.getHeader(name);
 		 	if(name != null && name.startsWith(Constants.HESSOA_CONTEXT_HEADER_PREFIX)) {
-		 		HessianHeaderContext.add(name.substring(Constants.HESSOA_CONTEXT_HEADER_PREFIX.length()),
-		 				value);
+		 		String namespace = name.substring(Constants.HESSOA_CONTEXT_HEADER_PREFIX.length());
+		 		HessianHeaderContext.set(namespace, QueryStringUtils.parse(value));
 		 	}
 		}
 		

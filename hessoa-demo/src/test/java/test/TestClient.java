@@ -15,7 +15,7 @@ public class TestClient {
 			
 			// 放些上下文
 			SOAClientContext.add("loginUserId", "3");
-			SOAClientContext.add("loginUserName", "nick");
+			SOAClientContext.add("loginUserName名称", "nick你好");
 			
 			// 指定绝对地址的方式，方便用于调试指向到哪台机器上
 //			IUserService userService = SOAClient.getService(IUserService.class,

@@ -13,22 +13,42 @@ import java.util.Map;
  */
 public class HessianHeaderContext {
 
-	private static final ThreadLocal<Map<String, String>> context =
-			new ThreadLocal<Map<String, String>>();
+	/**
+	 * 2017年5月19日 15:38:04
+	 * 为解决hessian将头部都变成小写的问题，这里将头部数据格式修改成Map<String, Map<String, String>>
+	 * 
+	 * 【特别注意】namespace是hessoa自行管理的，只能用小写!
+	 */
+	private static final ThreadLocal<Map<String, Map<String, String>>> context =
+			new ThreadLocal<Map<String, Map<String, String>>>();
 	
 	private HessianHeaderContext() {}
 	
-	public static void add(String key, String value) {
-		get().put(key, value);
+	public static void add(String namespace, String key, String value) {
+		get(namespace).put(key, value);
 	}
 	
-	public static Map<String, String> get() {
-		Map<String, String> map = context.get();
+	public static void set(String namespace, Map<String, String> map) {
+		get().put(namespace, map);
+	}
+	
+	public static Map<String, Map<String, String>> get() {
+		Map<String, Map<String, String>> map = context.get();
 		if(map == null) {
-			map = new HashMap<String, String>();
+			map = new HashMap<String, Map<String, String>>();
 			context.set(map);
 		}
 		return map;
+	}
+	
+	public static Map<String, String> get(String namespace) {
+		Map<String, Map<String, String>> map = get();
+		Map<String, String> m = map.get(namespace);
+		if(m == null) {
+			m = new HashMap<String, String>();
+			map.put(namespace, m);
+		}
+		return m;
 	}
 	
 	/**
@@ -36,8 +56,8 @@ public class HessianHeaderContext {
 	 * @param key
 	 * @return
 	 */
-	public static String get(String key) {
-		return get().get(key);
+	public static String get(String namespace, String key) {
+		return get(namespace).get(key);
 	}
 	
 	/**

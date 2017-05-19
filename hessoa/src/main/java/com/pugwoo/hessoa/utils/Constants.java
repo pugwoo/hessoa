@@ -13,5 +13,6 @@ public interface Constants {
 	
 	String HESSOA_CONTEXT_HEADER_PREFIX = "_hsoa_";
 	
-	String HESSOA_CONTEXT_USER_PREFIX = "user_";
+	/**用户传输数据map namespace名*/
+	String HESSOA_CONTEXT_HEADER_USER = "user";
 }

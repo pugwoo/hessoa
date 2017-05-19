@@ -6,6 +6,7 @@ import java.util.Map.Entry;
 
 import com.caucho.hessian.client.HessianConnection;
 import com.pugwoo.hessoa.utils.Constants;
+import com.pugwoo.hessoa.utils.QueryStringUtils;
 
 public class HessianProxy extends com.caucho.hessian.client.HessianProxy {
 
@@ -24,10 +25,10 @@ public class HessianProxy extends com.caucho.hessian.client.HessianProxy {
 		super.addRequestHeaders(conn);
 
 		// add hessoa Header
-		Map<String, String> map = HessianHeaderContext.get();
-		for (Entry<String, String> entry : map.entrySet()) {
+		Map<String, Map<String, String>> map = HessianHeaderContext.get();
+		for (Entry<String, Map<String, String>> entry : map.entrySet()) {
 			conn.addHeader(Constants.HESSOA_CONTEXT_HEADER_PREFIX + entry.getKey(),
-					entry.getValue());
+					QueryStringUtils.format(entry.getValue()));
 		}
 	}
 

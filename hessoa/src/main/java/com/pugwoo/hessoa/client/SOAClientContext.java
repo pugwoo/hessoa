@@ -1,14 +1,14 @@
 package com.pugwoo.hessoa.client;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import com.pugwoo.hessoa.context.HessianHeaderContext;
 import com.pugwoo.hessoa.utils.Constants;
 
 /**
- * 提供给用户端使用的上下文contxt
+ * 提供给用户端使用的上下文contxt。
+ * 说明：tomcat的http头部最大是8K字节，除了系统会占用一些头部信息，留给用户自定义的头部，建议不要超过4k。
+ *      头部字节过大会加大网络传输量，影响调用性能。
  * @author nick
  */
 public class SOAClientContext {
@@ -18,24 +18,15 @@ public class SOAClientContext {
 	 * @return
 	 */
 	public static Map<String, String> get() {
-		Map<String, String> result = new HashMap<String, String>();
-		Map<String, String> map = HessianHeaderContext.get();
-		for(Entry<String, String> entry : map.entrySet()) {
-			String key = entry.getKey();
-			if(key != null && key.startsWith(Constants.HESSOA_CONTEXT_USER_PREFIX)) {
-				result.put(key.substring(Constants.HESSOA_CONTEXT_USER_PREFIX.length()),
-						entry.getValue());
-			}
-		}
-		return result;
+		return HessianHeaderContext.get(Constants.HESSOA_CONTEXT_HEADER_USER);
 	}
 	
 	public static String get(String key) {
-		return HessianHeaderContext.get(Constants.HESSOA_CONTEXT_USER_PREFIX + key);
+		return HessianHeaderContext.get(Constants.HESSOA_CONTEXT_HEADER_USER, key);
 	}
 	
 	public static void add(String key, String value) {
-		HessianHeaderContext.add(Constants.HESSOA_CONTEXT_USER_PREFIX + key, value);
+		HessianHeaderContext.add(Constants.HESSOA_CONTEXT_HEADER_USER, key, value);
 	}
 	
 }
