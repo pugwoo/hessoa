@@ -22,7 +22,6 @@ public class QueryStringUtils {
 	 * 将object转换成 query String
 	 * @param object
 	 * @return will not return null
-	 * @throws UnsupportedEncodingException 
 	 */
 	public static String format(Map<String, String> object) {
 		if(object == null) {
@@ -53,7 +52,6 @@ public class QueryStringUtils {
 	 * queryString转换成map
 	 * @param queryString
 	 * @return
-	 * @throws UnsupportedEncodingException 
 	 */
 	public static Map<String, String> parse(String queryString) {
 		Map<String, String> map = new HashMap<String, String>();
