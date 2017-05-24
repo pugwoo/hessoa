@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * parse and format map to querystring
+ * 
+ * 不支持查询参数中有相同name的情况，如果有，后面的会覆盖前面的
  * @author pugwoo
  */
 public class QueryStringUtils {
