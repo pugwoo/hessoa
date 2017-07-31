@@ -29,9 +29,22 @@ public class Configs {
 		return prop.getProperty("redis.port");
 	}
 	
-	/**拿到redis的密码，拿不到返回null*/
+	/**拿到redis的密码，拿不到或空返回null*/
 	public static String getRedisPassword() {
-		return prop.getProperty("redis.password");
+		String passwd = prop.getProperty("redis.password");
+		if(passwd == null || passwd.trim().isEmpty()) {
+			return null;
+		}
+		return passwd;
+	}
+	
+	/**拿到redis的数据库index，默认0，拿不到返回0*/
+	public static int getRedisDatabase() {
+		String database = prop.getProperty("redis.database");
+		if(database == null || database.trim().isEmpty()) {
+			return 0;
+		}
+		return new Integer(database.trim());
 	}
 	
 	/**拿到配置的key的前缀，拿不到返回空字符串*/

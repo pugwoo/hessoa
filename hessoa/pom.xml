@@ -4,7 +4,7 @@
 
 	<groupId>com.pugwoo</groupId>
 	<artifactId>hessoa</artifactId>
-	<version>0.4.3</version>
+	<version>0.4.4-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>hessoa</name>

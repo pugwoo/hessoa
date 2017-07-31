@@ -36,6 +36,7 @@ public class RedisUtils {
 		String host = Configs.getRedisHost();
 		String port = Configs.getRedisPort();
 		String passwd = Configs.getRedisPassword();
+		int database = Configs.getRedisDatabase();
 		redisKeyPrefix = Configs.getRedisKeyPrefix();
 		
 		if(host != null && !host.isEmpty() && port != null && !port.isEmpty()) {
@@ -46,13 +47,8 @@ public class RedisUtils {
 			poolConfig.setTestOnBorrow(false);
 			poolConfig.setTestOnReturn(false);
 			
-			if(passwd == null || passwd.trim().isEmpty()) {
-				pool = new JedisPool(poolConfig, host, Integer.valueOf(port),
-						Protocol.DEFAULT_TIMEOUT);
-			} else {
-				pool = new JedisPool(poolConfig, host, Integer.valueOf(port),
-						Protocol.DEFAULT_TIMEOUT, passwd);
-			}
+			pool = new JedisPool(poolConfig, host, Integer.valueOf(port),
+					Protocol.DEFAULT_TIMEOUT, passwd, database, null);
 			LOGGER.info("hessoa redis init succ.");
 		} else {
 			LOGGER.warn("hessoa no redis is found");
