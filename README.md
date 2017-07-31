@@ -47,6 +47,15 @@ network.check.first=true
 #network.public.hostname=hessoa_public_ip
 ```
 
+## 关于环境隔离、部署SET隔离
+
+总的有两种隔离方式：
+
+- 1）不同的redis数据库（含相同redis实例但不同的database，redis有0到16个数据库）。
+- 2）不同的`redis.key.prefix`前缀。
+
+通过这两种方式的组合，用于实现环境隔离、部署SET隔离。
+
 ## 关于上下文传递
 
 Hessoa内置支持SOA调用之间传递上下文信息，每个线程拥有独立的上下文信息。A应用在运行过程中，将数据放入SOA上下文中，调用`SOAClientContext.add("loginUserId", "3");`将登录信息放在SOA上下文中；此后，只要A应用调用了其它应用的SOA服务（无论多少次），那么对方就可以通过它自己的`SOAClientContext.get("loginUserId")`拿到A应用传递过来的信息。
