@@ -1,3 +1,6 @@
+2017年8月4日
+v0.4.5 - [update] 升级spring版本到4.3.10.RELEASE
+
 2017年7月31日
 v0.4.4 - [add] 增加redis的0-15个数据库指定，使用参数:redis.database
 

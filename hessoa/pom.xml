@@ -4,7 +4,7 @@
 
 	<groupId>com.pugwoo</groupId>
 	<artifactId>hessoa</artifactId>
-	<version>0.4.4</version>
+	<version>0.4.5</version>
 	<packaging>jar</packaging>
 
 	<name>hessoa</name>
@@ -14,7 +14,7 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<spring.version>4.2.8.RELEASE</spring.version>
+		<spring.version>4.3.10.RELEASE</spring.version>
 	</properties>
 	
 	<developers>
