@@ -1,5 +1,9 @@
 package com.pugwoo.hessoa.test.api.service;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import com.pugwoo.hessoa.test.api.entity.UserDO;
 
 /**
@@ -7,10 +11,18 @@ import com.pugwoo.hessoa.test.api.entity.UserDO;
  */
 public interface IUserService {
 	
-	public String getInfo();
+	String getInfo();
 	
-	public String sayHello(String name);
+	String sayHello(String name);
 	
-	public UserDO getUser();
+	UserDO getUser();
+	
+	String insert(UserDO userDO);
+	
+	String insert(List<UserDO> userDOs);
+	
+	String insert(Map<Object, UserDO> userMap);
+	
+	String insert(Set<UserDO> userDOs);
 	
 }

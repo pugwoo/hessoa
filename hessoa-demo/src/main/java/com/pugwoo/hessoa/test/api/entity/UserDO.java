@@ -12,6 +12,11 @@ public class UserDO implements Serializable{
 	
 	private String name; // 姓名
 	private int score; // 分数
+	
+	@Override
+	public String toString() {
+		return "name:" + name + ",score:" + score;
+	}
 
 	public String getName() {
 		return name;

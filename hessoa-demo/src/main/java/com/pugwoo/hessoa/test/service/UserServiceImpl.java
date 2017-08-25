@@ -1,7 +1,9 @@
 package com.pugwoo.hessoa.test.service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -46,4 +48,28 @@ public class UserServiceImpl implements IUserService{
 		return user;
 	}
 
+	@Override
+	public String insert(UserDO userDO) {
+		System.out.println(userDO);
+		return "ok";
+	}
+
+	@Override
+	public String insert(List<UserDO> userDOs) {
+		System.out.println(userDOs);
+		return "ok";
+	}
+
+	@Override
+	public String insert(Map<Object, UserDO> userMap) {
+		System.out.println(userMap);
+		return "ok";
+	}
+
+	@Override
+	public String insert(Set<UserDO> userDOs) {
+		System.out.println(userDOs);
+		return "ok";
+	}
+	
 }

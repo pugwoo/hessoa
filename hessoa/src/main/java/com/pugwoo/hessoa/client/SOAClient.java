@@ -6,19 +6,25 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
 
 import com.pugwoo.hessoa.context.HessianProxyFactory;
 import com.pugwoo.hessoa.exceptions.NoHessoaServerException;
@@ -370,9 +376,7 @@ public class SOAClient {
 				interfaces, new InvocationHandler() {
 			@Override
 			public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-				
-				// XXX 暂不考虑每次初始化性能问题，后续再优化
-				
+				// XXX 暂不考虑每次获取url并构造factory性能问题，后续再优化
 				String url = getOneUrlByClass(clazz);
 				if(url == null) {
 					LOGGER.error("no hessoa server for interface {}", clazz);
@@ -385,6 +389,7 @@ public class SOAClient {
 				factory.setOverloadEnabled(true); 
 				try {
 					T t = (T) factory.create(clazz, url);
+					args = handleArgs(method, args);
 					Object result = method.invoke(t, args);
 					return result;
 				} catch (MalformedURLException e) {
@@ -398,27 +403,174 @@ public class SOAClient {
 	}
 
 	/**
-	 * 通过手工指定url获得服务引用。
+	 * 通过手工指定url获得服务引用。该方法建议在开发联调时使用。
 	 * 
 	 * @param clazz 传入接口className
 	 * @param url 必须是绝对地址，必须以http://开头
 	 * @return null 如果拿不到服务
 	 */
-	public static <T> T getService(Class<T> clazz, String url) {
+	@SuppressWarnings("unchecked")
+	public static <T> T getService(final Class<T> clazz, final String url) {
 		if(url == null) {
 			return null;
 		}
 
-		HessianProxyFactory factory = new HessianProxyFactory();
-		factory.setOverloadEnabled(true); 
-		try {
-			@SuppressWarnings("unchecked")
-			T t = (T) factory.create(clazz, url);
-			return t;
-		} catch (MalformedURLException e) {
-			LOGGER.error("getService {} fail", clazz.getName(), e);
-			return null;
+		Class<?>[] interfaces = new Class[1];
+		interfaces[0] = clazz;
+		return (T) Proxy.newProxyInstance(clazz.getClassLoader(),
+				interfaces, new InvocationHandler() {
+			@Override
+			public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+				HessianProxyFactory factory = new HessianProxyFactory();
+				factory.setOverloadEnabled(true); 
+				try {
+					T t = (T) factory.create(clazz, url);
+					args = handleArgs(method, args);
+					Object result = method.invoke(t, args);
+					return result;
+				} catch (MalformedURLException e) {
+					LOGGER.error("wrong url {} for interface {}", url, clazz.getName(), e);
+				    throw new WrongHessoaUrlException("wrong url " + url + " for interface "
+				    		+ clazz.getName());
+				}
+			}
+		});
+	}
+	
+	/**
+	 * 处理当参数args是接口类型的子类时，把它转化成接口准确的类型。
+	 * 支持处理泛型的类：java.util.List, java.util.Map, java.util.Set，且只支持一层泛型，
+	 * 对于Object类或WildcardType ?不进行处理，接口定义请尽量不要用WildcardType或Object，不确定因素太多。
+	 */
+	@SuppressWarnings("unchecked")
+	private static Object[] handleArgs(Method method, Object[] args) {
+		if(args == null || args.length == 0) {
+			return args;
 		}
+		
+		Class<?> classes[] = method.getParameterTypes();
+		Type[] types = method.getGenericParameterTypes();
+		for(int i = 0; i < args.length && i < classes.length; i++) {
+			if(args[i] == null) {
+				continue;
+			}
+			
+			if(classes[i] == List.class) {
+				List<Object> list = (List<Object>) args[i];
+				ParameterizedType type = (ParameterizedType) types[i];
+				Class<?> clazz = null;
+				if(type.getActualTypeArguments()[0] instanceof Class<?>) {
+					clazz = (Class<?>) type.getActualTypeArguments()[0];
+					if(clazz == Object.class) {clazz = null;}
+				}
+				if(clazz == null) { // 对于泛型中的WildcardType不进行处理
+					continue;
+				}
+				for(int j = 0; j < list.size(); j++) {
+					if(list.get(j) == null) {continue;}
+					if(clazz != list.get(j).getClass()) {
+						Object obj = BeanUtils.instantiateClass(clazz);
+						BeanUtils.copyProperties(list.get(j), obj);
+						list.set(j, obj);
+					}
+				}
+			} else if (classes[i] == Set.class) {
+				Set<Object> set = (Set<Object>) args[i];
+				ParameterizedType type = (ParameterizedType) types[i];
+				Class<?> clazz = null;
+				if(type.getActualTypeArguments()[0] instanceof Class<?>) {
+					clazz = (Class<?>) type.getActualTypeArguments()[0];
+					if(clazz == Object.class) {clazz = null;}
+				}
+				if(clazz == null) { // 对于泛型中的WildcardType不进行处理
+					continue;
+				}
+				Iterator<Object> it = set.iterator();
+				Set<Object> newSet = null;
+				while(it.hasNext()) {
+					Object obj = it.next();
+					if(obj == null) {continue;}
+					if(clazz != obj.getClass()) {
+						Object o = BeanUtils.instantiateClass(clazz);
+						BeanUtils.copyProperties(obj, o);
+						it.remove();
+						if(newSet == null) {
+							newSet = new HashSet<Object>();
+						}
+						newSet.add(o);
+					}
+				}
+				if(newSet != null && !newSet.isEmpty()) {
+					for(Object obj : newSet) {
+						set.add(obj);
+					}
+				}
+				args[i] = set;
+			} else if (classes[i] == Map.class) {
+				Map<Object, Object> map = (Map<Object, Object>) args[i];
+				ParameterizedType type = (ParameterizedType) types[i];
+				Class<?> clazz0 = null;
+				if(type.getActualTypeArguments()[0] instanceof Class<?>) {
+					clazz0 = (Class<?>) type.getActualTypeArguments()[0];
+					if(clazz0 == Object.class) {clazz0 = null;}
+				}
+				Class<?> clazz1 = null;
+				if(type.getActualTypeArguments()[1] instanceof Class<?>) {
+					clazz1 = (Class<?>) type.getActualTypeArguments()[1];
+					if(clazz1 == Object.class) {clazz1 = null;}
+				}
+				if(clazz0 == null && clazz1 == null) {continue;}
+				
+				Set<Object> removeKey = null;
+				Map<Object, Object> newMap = null;
+				for(Entry<Object, Object> entry : map.entrySet()) {
+					Object key = entry.getKey();
+					Object oldKey = key;
+					Object value = entry.getValue();
+					boolean isChange = false;
+					if(key != null && clazz0 != null && clazz0 != key.getClass()) {
+						isChange = true;
+						Object obj = BeanUtils.instantiateClass(clazz0);
+						BeanUtils.copyProperties(key, obj);
+						key = obj;
+					}
+					if(value != null && clazz1 != null && clazz1 != value.getClass()) {
+						isChange = true;
+						Object obj = BeanUtils.instantiateClass(clazz1);
+						BeanUtils.copyProperties(value, obj);
+						value = obj;
+					}
+					if(isChange) {
+						if(removeKey == null) {
+							removeKey = new HashSet<Object>();
+						}
+						if(newMap == null) {
+							newMap = new HashMap<Object, Object>();
+						}
+						newMap.put(key, value);
+						removeKey.add(oldKey);
+					}
+				}
+				if(removeKey != null) {
+					for(Object key : removeKey) {
+						map.remove(key);
+					}
+				}
+				if(newMap != null) {
+					for(Entry<Object, Object> entry : newMap.entrySet()) {
+						map.put(entry.getKey(), entry.getValue());
+					}
+				}
+			} else {
+				if(classes[i] != args[i].getClass()) { // 当类型不一致时，强制转换类型
+					Object obj = BeanUtils.instantiateClass(classes[i]);
+					BeanUtils.copyProperties(args[i], obj);
+					args[i] = obj;
+				}
+			}
+		}
+		
+		return args;
 	}
 	
 	/**
