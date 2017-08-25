@@ -34,7 +34,7 @@ import com.pugwoo.hessoa.utils.RedisUtils;
  * com.abc.xxx  127.0.0.1:8080
  * com.abc.xxx  127.1.2.3:8081
  * 
- * 配置文件每1秒读取更新一次。
+ * 配置文件每10秒读取更新一次。
  * 
  * 匹配package如果有多个时，以最细的package更优先为原则。例如认为com.abc.order.list比com.abc.order优先级高。
  * 
@@ -54,7 +54,6 @@ public class SOAClient {
 	/**需要扫描的配置文件，按顺序直到找到第一个为止*/
 	private static final String[] confPaths = new String[] {
 			"/etc/soa_host",
-			"/root/soa_host",
 			"C:/soa_host.txt",
 			"D:/soa_host.txt"};
 		
@@ -83,7 +82,7 @@ public class SOAClient {
 				while (true) {
 					try {
 						updatePkgToHosts();
-						Thread.sleep(3000);
+						Thread.sleep(10000);
 					} catch (Exception e) {
 						LOGGER.error("updatePkgToHosts fail", e);
 					}				
