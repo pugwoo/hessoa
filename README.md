@@ -6,7 +6,9 @@ Hessoa通过注解的方式暴露服务，通过手工配置hosts路由的方式
 
 hessoa的使用请详见hessoa-demo。【必须】请先在本地安装一个redis，默认端口无密码即可，然后即可跑起hessoa-demo项目：将hessoa-demo war包部署到tomcat，然后main方式跑`test.TestClient`类即可。
 
-## 配置中心
+hessoa依赖于spring mvc，但hessoa不强依赖而spirng mvc，而是maven配置为由使用者引入spring mvc，也即hessoa并不强指定应该用哪个版本的spring mvc，而是由使用者的spring版本来决定。具体详见hessoa-demo。
+
+## 关于配置中心
 
 目前支持redis作为配置中心，在线上环境中，跑起来需要redis服务器。为了最好的体验，必须依赖redis作为配置中心。目前服务端每30秒上报一次服务url给redis，过期时间为60秒，也即如果一台服务器超过1分钟没有上报服务，那么该台机器url将从配置中心删除。
 
@@ -65,6 +67,10 @@ Hessoa内置支持SOA调用之间传递上下文信息，每个线程拥有独�
 ## 关于内外网安全
 
 hessoa是基于标准的Servlet容器的，所以当hessoa和外网的接口在一起的时候，就可能导致hessoa的接口被外网访问到，导致安全问题。因此，在设计上，hessoa所有的接口都会以`/_hessoa/`开头，可以在nginx那边配置，所有请求到`/_hessoa/`的请求都禁止掉，即可从运维层面完全隔离和处理安全问题。
+
+## 关于客户端调用的参数是接口定义参数类的子类的情况
+
+hessoa支持参数实例类型是接口定义类型的子类型的情况，同时支持java.util.List, java.util.Set和java.util.Map中，参数是泛型类型的子类型的情况，但只支持一层的泛型。
 
 ## 关于传输数据用到枚举Enum的情况
 
