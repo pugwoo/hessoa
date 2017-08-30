@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import com.pugwoo.hessoa.annotation.HessianService;
 import com.pugwoo.hessoa.client.SOAClientContext;
 import com.pugwoo.hessoa.test.api.entity.UserDO;
+import com.pugwoo.hessoa.test.api.entity.UserTypeEnum;
 import com.pugwoo.hessoa.test.api.service.IUserService;
 import com.pugwoo.hessoa.test.dao.IUserDAO;
 
@@ -40,6 +41,11 @@ public class UserServiceImpl implements IUserService{
 	public int sayInt(int n) {
 		System.out.println("say int:" + n);
 		return n;
+	}
+	
+	@Override
+	public UserTypeEnum sayEnum(UserTypeEnum type) {
+		return type;
 	}
 
 	public String sayHello(String name) {

@@ -2,6 +2,7 @@ package test;
 
 import com.pugwoo.hessoa.client.SOAClient;
 import com.pugwoo.hessoa.client.SOAClientContext;
+import com.pugwoo.hessoa.test.api.entity.UserTypeEnum;
 import com.pugwoo.hessoa.test.api.service.IUserService;
 
 public class TestClient {
@@ -39,6 +40,8 @@ public class TestClient {
 		System.out.println(userService.sayInt(b));
 		System.out.println(userService.sayInt(5));
 		
+		
+		System.out.println(userService.sayEnum(UserTypeEnum.VIP));
 		// Thread.sleep(300000); // 观察SOAClient
 	}
 	
