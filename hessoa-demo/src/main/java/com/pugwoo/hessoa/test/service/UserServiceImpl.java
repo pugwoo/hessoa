@@ -35,6 +35,12 @@ public class UserServiceImpl implements IUserService{
 		
 		return "This is spring remote service";
 	}
+	
+	@Override
+	public int sayInt(int n) {
+		System.out.println("say int:" + n);
+		return n;
+	}
 
 	public String sayHello(String name) {
 		return userDAO.sayHello(name);

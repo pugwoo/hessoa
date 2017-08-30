@@ -31,6 +31,14 @@ public class TestClient {
 			System.out.println("调用服务耗时:" + (end - start) + "ms");
 		}
 
+		IUserService userService = SOAClient.getService(IUserService.class);
+		
+		Integer a  = 3;
+		int b = 4;
+		System.out.println(userService.sayInt(a));
+		System.out.println(userService.sayInt(b));
+		System.out.println(userService.sayInt(5));
+		
 		// Thread.sleep(300000); // 观察SOAClient
 	}
 	

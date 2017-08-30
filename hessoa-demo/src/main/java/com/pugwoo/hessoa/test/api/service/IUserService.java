@@ -15,6 +15,8 @@ public interface IUserService {
 	
 	String sayHello(String name);
 	
+	int sayInt(int n);
+	
 	UserDO getUser();
 	
 	String insert(UserDO userDO);

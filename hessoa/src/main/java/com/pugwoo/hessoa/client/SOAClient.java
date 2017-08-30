@@ -455,6 +455,13 @@ public class SOAClient {
 				continue;
 			}
 			
+			// 如果class[i]是基本类型，则不处理
+			if(classes[i] == byte.class || classes[i] == short.class || classes[i] == int.class
+			 ||classes[i] == long.class || classes[i] == float.class || classes[i] == double.class
+			 ||classes[i] == boolean.class || classes[i] == char.class) {
+				continue;
+			}
+			
 			if(classes[i] == List.class) {
 				List<Object> list = (List<Object>) args[i];
 				ParameterizedType type = (ParameterizedType) types[i];
