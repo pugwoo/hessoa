@@ -32,6 +32,7 @@ import com.pugwoo.hessoa.exceptions.WrongHessoaUrlException;
 import com.pugwoo.hessoa.utils.Configs;
 import com.pugwoo.hessoa.utils.NetUtils;
 import com.pugwoo.hessoa.utils.RedisUtils;
+import com.pugwoo.hessoa.utils.NetUtils.IPPort;
 
 /**
  * 拿到soa的具体url，这是一种手工的方式。
@@ -47,7 +48,7 @@ import com.pugwoo.hessoa.utils.RedisUtils;
  * 机器查找路径为：confPaths写定的。
  * 
  * ==================2016年12月12日 14:50:48 =======================
- * 现在支持redis作为配置中心服务器，但是本地文件依然有效。而且本地文件优先生效。
+ * 现在支持redis作为配置中心服务器[必须]，但是本地文件依然有效。而且本地文件优先生效。
  * 
  * 默认的，当redis拿到多个服务地址时，会优先使用本机的服务。除非本地文件特意配置。
  * 
@@ -87,8 +88,8 @@ public class SOAClient {
 			public void run() {
 				while (true) {
 					try {
-						updatePkgToHosts();
 						Thread.sleep(10000);
+						updatePkgToHosts();
 					} catch (Exception e) {
 						LOGGER.error("updatePkgToHosts fail", e);
 					}				
@@ -191,9 +192,11 @@ public class SOAClient {
 	
 	/**更新redis url，把所有可用的ip放到列表中*/
 	private static void updateRedisUrl() {
-		for(Entry<String, List<String>> entry : redisInterfToUrls.entrySet()) {
-			List<String> urls = getRedisUrlAndFilterIp(entry.getKey(), false);
-			entry.setValue(urls);
+		synchronized (redisInterfToUrls) { // 避免和checkHostsLive冲突
+			for(Entry<String, List<String>> entry : redisInterfToUrls.entrySet()) {
+				List<String> urls = getRedisUrlAndFilterIp(entry.getKey(), false);
+				entry.setValue(urls);
+			}
 		}
 	}
 	
@@ -201,29 +204,37 @@ public class SOAClient {
 	 * 检查服务器是否存活，失效的则移除掉。
 	 */
 	private static synchronized void checkHostsLive() {
-		// 检查redis的，局部替换即可,不会减少key
-		for(Entry<String, List<String>> entry : redisInterfToUrls.entrySet()) {
-			List<String> lives = new ArrayList<String>();
-			for(String str : entry.getValue()) {
-				if(NetUtils.checkUrlAlive(str)) {
-					lives.add(str);
-				} else {
-					LOGGER.warn("host {} is inavaliable", str);
+		synchronized (redisInterfToUrls) { // 避免和updateRedisUrl冲突
+			// 检查redis的，局部替换即可,不会减少key
+			// 2017年12月24日 17:29:30 优化：由检查url修改为检查host，将检查次数减少90%
+			Map<IPPort, Boolean> liveHosts = new HashMap<IPPort, Boolean>();
+			for(Entry<String, List<String>> entry : redisInterfToUrls.entrySet()) {
+				List<String> lives = new ArrayList<String>();
+				for(String str : entry.getValue()) {
+					IPPort ipPort = NetUtils.parseIpPort(str);
+					if(!liveHosts.containsKey(ipPort)) {
+						liveHosts.put(ipPort, NetUtils.checkUrlAlive(ipPort));
+					}
+					if(liveHosts.get(ipPort)) {
+						lives.add(str);
+					} else {
+						LOGGER.warn("host {} is inavaliable", str);
+					}
 				}
-			}
-			if(lives.isEmpty()) {
-				LOGGER.error("class {} has no avaliable hosts in redis.", entry.getKey());
-			} else {
-				entry.setValue(lives);// 在全部失效的情况下，不移除，因为移除也没有意义。还可能是本机网络中断的原因。
+				if(lives.isEmpty()) {
+					LOGGER.error("class {} has no avaliable hosts in redis.", entry.getKey());
+				} else {
+					entry.setValue(lives);// 在全部失效的情况下，不移除，因为移除也没有意义。还可能是本机网络中断的原因。
+				}
 			}
 		}
 		
-		// 检查本地的，因为livePkgToHosts可能删除key，所以使用全量替换
+		// 检查本地配置文件的，因为livePkgToHosts可能删除key，所以使用全量替换
 		Map<String, List<String>> _livePkgToHosts = new HashMap<String, List<String>>();
 		for(Entry<String, List<String>> entry : pkgToHosts.entrySet()) {
 			List<String> lives = new ArrayList<String>();
 			for(String str : entry.getValue()) {
-				if(NetUtils.checkUrlAlive(str)) {
+				if(NetUtils.checkUrlAlive(NetUtils.parseIpPort(str))) {
 					lives.add(str);
 				} else {
 					LOGGER.warn("host {} is inavaliable", str);
@@ -641,7 +652,7 @@ public class SOAClient {
 		if(!isFirstGet || Configs.isFirstGetCheckAlive()) {
 			List<String> liveUrls = new ArrayList<String>();
 			for(String url : newUrls) {
-				if(NetUtils.checkUrlAlive(url)) {
+				if(NetUtils.checkUrlAlive(NetUtils.parseIpPort(url))) {
 					liveUrls.add(url);
 				}
 			}

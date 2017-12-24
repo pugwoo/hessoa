@@ -16,6 +16,15 @@ public class NetUtils {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(NetUtils.class);
 	
+	public static class IPPort {
+		public String ip;
+		public int port;
+		public IPPort(String ip, int port) {
+			this.ip = ip;
+			this.port = port;
+		}
+	}
+	
 	public static boolean isIpLAN(String ip) {
 		for(int i = 0; i <= 3; i++) {
 			if(isIpInRange(ip, i)) {
@@ -52,13 +61,9 @@ public class NetUtils {
 		return false;
 	}
 	
-	/**
-	 * 检查链接是否可以联通, url支持各种不规范的写法，例如http://或https://开头等。
-	 * 超时配置取自Configs的超时配置
-	 */
-	public static boolean checkUrlAlive(String url) {
+	public static IPPort parseIpPort(String url) {
 		if(url == null) {
-			return false;
+			return null;
 		}
 		
 		int defaultPort = 80;
@@ -86,10 +91,24 @@ public class NetUtils {
 			port = defaultPort;
 		}
 		
+		return new IPPort(ip, port);
+	}
+	
+	/**
+	 * 检查链接是否可以联通, url支持各种不规范的写法，
+	 * 例如http://或https://开头等，例如192.168.1.22:8087。
+	 * 超时配置取自Configs的超时配置
+	 */
+	public static boolean checkUrlAlive(IPPort ipPort) {
+		if(ipPort == null || ipPort.ip == null) {
+			return false;
+		}
+			
 		Socket client = null;
 		try {
 			client = new Socket();
-			client.connect(new InetSocketAddress(ip, port), Configs.getNetworkCheckTimeout());
+			client.connect(new InetSocketAddress(ipPort.ip, ipPort.port),
+					Configs.getNetworkCheckTimeout());
 			return true;
 		} catch (Throwable e) {
 			return false;
@@ -98,7 +117,6 @@ public class NetUtils {
 				try {
 					client.close();
 				} catch (Throwable e) {
-					
 				}
 			}
 		}
