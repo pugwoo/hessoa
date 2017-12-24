@@ -26,6 +26,7 @@ public class TestClient2 {
 		String result = userService.insert(map);
 		
 		System.out.println(result);
+		
 	}
 	
 }
