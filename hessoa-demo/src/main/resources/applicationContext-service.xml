@@ -11,7 +11,7 @@
 	                    http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd ">
     
     <!-- 【注意】spring 4对于base-package的值不再支持*，但可以使用.，对于tomcat8及以上，不能使用.或* -->
-	<context:component-scan base-package="com.pugwoo.*" />
+	<context:component-scan base-package="com.pugwoo" />
 	
     <!-- 项目自己的spring配置文件 -->
     

@@ -11,7 +11,10 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -50,7 +53,32 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 	
 	private String beanName; // 就是url，由注解HessianServiceScanner注入
 	
-	private List<String> urls = new ArrayList<String>();
+	private static Map<String, List<String>> interfUrls = new ConcurrentHashMap<String, List<String>>();
+	
+	static { // 30秒汇报一次
+		if(RedisUtils.isConfigRedis()) {
+			Thread thread = new Thread(new Runnable() {
+				@Override
+				public void run() {
+					while(true) {
+						try {
+							Thread.sleep(30 * 1000);
+						} catch (InterruptedException e1) { // ignore
+						}
+						for(Entry<String, List<String>> entry : interfUrls.entrySet()) {
+							try {
+								RedisUtils.addUrl(entry.getKey(), entry.getValue(), 60); //60秒数据过时
+							} catch (Throwable e) {
+								LOGGER.error("RedisUtils.addUrl {} exception", entry.getKey(), e);
+							}
+						}
+					}
+				}
+			}, "SOAHessianServiceExporter");
+			thread.setDaemon(true);
+			thread.start();
+		}
+	}
 	
 	/**
 	 * 读取自定义的header，并全量放到HessianHeaderContext中
@@ -79,6 +107,7 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 
 	@Override
 	public void setServletConfig(ServletConfig servletConfig) {
+		List<String> urls = new ArrayList<String>();
 		ServletContext servletContext = servletConfig.getServletContext();
 		try {
 			List<String> endPoints = getEndPoints();			
@@ -104,29 +133,14 @@ public class SOAHessianServiceExporter extends HessianServiceExporter implements
 				}
 				urls.add(endPoint + contextPath + url);
 			}
-			
 		} catch (Exception e) {
 			LOGGER.error("scan hessoa service exporter ex", e);
 		}
 		
 		if(!urls.isEmpty()) {
 			if(RedisUtils.isConfigRedis()) { // 起一个线程，不停向redis报告，每分钟报告一次
-				Thread thread = new Thread(new Runnable() {
-					@Override
-					public void run() {
-						while(true) {
-							try {
-								RedisUtils.addUrl(getServiceInterface().getName(), 
-										urls, 60); // 60秒数据过时
-								Thread.sleep(30 * 1000); // 30秒汇报一次
-							} catch (Throwable e) {
-								LOGGER.error("RedisUtils.addUrl ex", e);
-							}
-						}
-					}
-				}, "SOAHessianServiceExporter");
-				thread.setDaemon(true);
-				thread.start();
+				interfUrls.put(getServiceInterface().getName(), urls);
+				RedisUtils.addUrl(getServiceInterface().getName(), urls, 60); // 60秒数据过时
 			}
 		}
 	}
