@@ -6,7 +6,7 @@ import java.io.Serializable;
  * 2012年11月21日 10:54:30
  * 数据结构类
  */
-public class UserDO implements Serializable{
+public class UserDO implements Serializable {
 	
 	private static final long serialVersionUID = 1L;
 	
