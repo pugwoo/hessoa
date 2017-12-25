@@ -1,5 +1,5 @@
 2017年12月24日
-v0.5.2 - [improve] 优化检查ip性能，优化SOAHessianServiceExportor线程
+v0.5.2 - [improve] 优化检查ip性能; 优化SOAHessianServiceExportor线程
        - [add] 增加客户端因网络原因失败而重试的功能
 
 2017年8月4日
