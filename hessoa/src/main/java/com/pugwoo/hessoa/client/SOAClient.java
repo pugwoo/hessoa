@@ -392,7 +392,9 @@ public class SOAClient {
 			@Override
 			public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
 				InvocationTargetException hce = null;
-				for(int i = 1; i <= 10; i++) { // 对于HessianRuntimeException，重试10次，间隔100ms
+				// 对于HessianRuntimeException，重试15次，间隔200ms；即总时间3秒，超过soaClient检查节点存活的1秒周期
+				// 从而提高了调用成功率，理论上调用不会因为机器重启而失败(只要当前节点有一台是活着的)
+				for(int i = 1; i <= 15; i++) { 
 					String url = getOneUrlByClass(clazz);
 					if(url == null) {
 						LOGGER.error("no hessoa server for interface {}", clazz);
@@ -430,7 +432,7 @@ public class SOAClient {
 						hce = e1;
 						LOGGER.error("HessianConnectionException and try at {} times", i, e1);
 						try {
-							Thread.sleep(100);
+							Thread.sleep(200);
 						} catch (Exception e) { // ignore
 						}
 					}
