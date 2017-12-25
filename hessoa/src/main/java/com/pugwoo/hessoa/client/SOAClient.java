@@ -387,7 +387,6 @@ public class SOAClient {
 				interfaces, new InvocationHandler() {
 			@Override
 			public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-				// XXX 暂不考虑每次获取url并构造factory性能问题，后续再优化
 				String url = getOneUrlByClass(clazz);
 				if(url == null) {
 					LOGGER.error("no hessoa server for interface {}", clazz);
