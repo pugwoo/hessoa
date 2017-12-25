@@ -23,6 +23,24 @@ public class NetUtils {
 			this.ip = ip;
 			this.port = port;
 		}
+		@Override
+		public boolean equals(Object obj) {
+			if(obj == null || !(obj instanceof IPPort)) {
+				return false;
+			}
+			IPPort object = (IPPort) obj;
+			if(port != object.port) {
+				return false;
+			}
+			if(ip == null) {
+				return object.ip == null;
+			}
+			return ip.equals(object.ip);
+		}
+		@Override
+		public int hashCode() {
+			return this.port + (this.ip == null ? 0 : this.ip.hashCode());
+		}
 	}
 	
 	public static boolean isIpLAN(String ip) {
