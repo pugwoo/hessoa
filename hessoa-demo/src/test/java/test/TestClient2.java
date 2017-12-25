@@ -28,10 +28,12 @@ public class TestClient2 {
 		map.put("nick", userVO);
 		map.put(1, userVO);
 		
-		for(int i = 0; i < 10000; i++) {
+		for(int i = 0; i < 1000000; i++) {
 			try {
+				long start = System.currentTimeMillis();
 				String result = userService.insert(map);
-				System.out.println(i + ":" + result);
+				long end = System.currentTimeMillis();
+				System.out.println(i + ":" + result + ",cost:" + (end -start) + "ms");
 				Thread.sleep(10);
 			} catch (Exception e) {
 				e.printStackTrace();

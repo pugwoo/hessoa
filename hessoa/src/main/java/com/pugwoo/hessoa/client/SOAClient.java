@@ -5,10 +5,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.net.ConnectException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -26,13 +28,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 
+import com.caucho.hessian.client.HessianConnectionException;
+import com.caucho.hessian.client.HessianRuntimeException;
 import com.pugwoo.hessoa.context.HessianProxyFactory;
 import com.pugwoo.hessoa.exceptions.NoHessoaServerException;
 import com.pugwoo.hessoa.exceptions.WrongHessoaUrlException;
 import com.pugwoo.hessoa.utils.Configs;
 import com.pugwoo.hessoa.utils.NetUtils;
-import com.pugwoo.hessoa.utils.RedisUtils;
 import com.pugwoo.hessoa.utils.NetUtils.IPPort;
+import com.pugwoo.hessoa.utils.RedisUtils;
 
 /**
  * 拿到soa的具体url，这是一种手工的方式。
@@ -387,27 +391,51 @@ public class SOAClient {
 				interfaces, new InvocationHandler() {
 			@Override
 			public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-				String url = getOneUrlByClass(clazz);
-				if(url == null) {
-					LOGGER.error("no hessoa server for interface {}", clazz);
-					throw new NoHessoaServerException("no hessoa server for interface " + 
-							clazz.toString());
+				InvocationTargetException hce = null;
+				for(int i = 1; i <= 10; i++) { // 对于HessianRuntimeException，重试10次，间隔100ms
+					String url = getOneUrlByClass(clazz);
+					if(url == null) {
+						LOGGER.error("no hessoa server for interface {}", clazz);
+						throw new NoHessoaServerException("no hessoa server for interface " + 
+								clazz.toString());
+					}
+					
+					// 这里使用继承后带头部context的
+					HessianProxyFactory factory = new HessianProxyFactory(); 
+					factory.setOverloadEnabled(true); 
+					try {
+						T t = (T) factory.create(clazz, url);
+						args = handleArgs(method, args);
+						Object result = method.invoke(t, args);
+						return result;
+					} catch (MalformedURLException e) {
+						LOGGER.error("wrong url {} for interface {}", url, clazz.getName(), e);
+					    throw new WrongHessoaUrlException("wrong url " + url + " for interface "
+					    		+ clazz.getName());
+					} catch (InvocationTargetException e1) {
+						// 只处理连接异常的重试
+						boolean isRetry = false;
+						if(e1.getTargetException() instanceof HessianConnectionException) {
+							isRetry = true;
+						}
+						if(!isRetry && e1.getTargetException() instanceof HessianRuntimeException) {
+							if(e1.getTargetException().getCause() instanceof ConnectException) {
+								isRetry = true;
+							}
+						}
+						if(!isRetry) {
+							throw e1;
+						}
+
+						hce = e1;
+						LOGGER.error("HessianConnectionException and try at {} times", i, e1);
+						try {
+							Thread.sleep(100);
+						} catch (Exception e) { // ignore
+						}
+					}
 				}
-				
-				// 这里使用继承后带头部context的
-				HessianProxyFactory factory = new HessianProxyFactory(); 
-				factory.setOverloadEnabled(true); 
-				try {
-					T t = (T) factory.create(clazz, url);
-					args = handleArgs(method, args);
-					Object result = method.invoke(t, args);
-					return result;
-				} catch (MalformedURLException e) {
-					LOGGER.error("wrong url {} for interface {}", url, clazz.getName(), e);
-				    throw new WrongHessoaUrlException("wrong url " + url + " for interface "
-				    		+ clazz.getName());
-				}
-				
+				throw hce;
 			}
 		});
 	}
