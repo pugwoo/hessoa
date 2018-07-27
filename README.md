@@ -6,7 +6,7 @@ Hessoa通过注解的方式暴露服务，通过手工配置hosts路由的方式
 
 hessoa的使用请详见hessoa-demo。【必须】请先在本地安装一个redis，默认端口无密码即可，然后即可跑起hessoa-demo项目：将hessoa-demo war包部署到tomcat，然后main方式跑`test.TestClient`类即可。
 
-hessoa依赖于spring mvc，但hessoa不强依赖而spirng mvc，而是maven配置为由使用者引入spring mvc，也即hessoa并不强指定应该用哪个版本的spring mvc，而是由使用者的spring版本来决定。具体详见hessoa-demo。
+hessoa依赖于spring mvc，由maven配置为由使用者引入spring mvc，也即hessoa并不强指定应该用哪个版本的spring mvc，而是由使用者的spring版本来决定。具体详见hessoa-demo。
 
 ## 关于配置中心
 
