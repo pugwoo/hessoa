@@ -1,3 +1,6 @@
+2018年7月27日
+v0.5.3 - [fix] 修复redis获取失败可能导致资源没有回收的问题
+
 2017年12月24日
 v0.5.2 - [improve] 优化检查ip性能; 优化SOAHessianServiceExportor线程
        - [add] 增加客户端因网络原因失败而重试的功能

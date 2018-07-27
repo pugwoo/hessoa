@@ -51,7 +51,7 @@ public class RedisUtils {
 					Protocol.DEFAULT_TIMEOUT, passwd, database, null);
 			LOGGER.info("hessoa redis init succ.");
 		} else {
-			LOGGER.warn("hessoa no redis is found");
+			LOGGER.error("hessoa no redis is found");
 		}
 	}
 	
@@ -72,10 +72,19 @@ public class RedisUtils {
 			return null;
 		}
 		for(int i = 0; i < 10; i++) { // 每100ms重试一次，重试10次
+			Jedis jedis = null;
 			try {
-				return pool.getResource();
+				jedis = pool.getResource();
+				return jedis;
 			} catch (Exception e) {
 				LOGGER.error("getJedisConnection fail", e);
+				if(jedis != null) {
+					try {
+						jedis.close();
+					} catch (Exception ex) {
+						LOGGER.error("close jedis fail", ex);
+					}
+				}
 			}
 		}
 		return null;
